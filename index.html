@@ -1,0 +1,1437 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>Симулятор сегмента МУКС</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#EDF3F9; --surface:#FFFFFF; --surface-2:#F4F8FC; --ink:#12203A; --ink-2:#3F4F6B; --muted:#6A7990;
+  --line:#D3DEEA; --line-2:#E6EDF5; --accent:#1590CF; --accent-ink:#0B5B8A; --accent-soft:#DCEFFA;
+  --good:#1C8A57; --good-soft:#DDF3E8; --warn:#B87700; --warn-soft:#FBEFD5; --crit:#CC3438; --crit-soft:#FBE1E1;
+  --s-air:#8A99AE; --s-air-band:rgba(138,153,174,.22); --s-cable:#eb6834; --s-q:#12203A; --s-key:#1baf7a; --s-ice:#2a78d6;
+  --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4;
+  --div-cold:#1c5cab; --div-mid:#f0efec; --div-warm:#c43a33;
+  --sky:#E3EFF9; --snow:#FBFDFF; --cable:#1F2630; --wave:#1590CF;
+  --f-display:'Unbounded','Golos Text',system-ui,sans-serif;
+  --f-body:'Golos Text',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0A1220; --surface:#101B2E; --surface-2:#0D1727; --ink:#E6EEF8; --ink-2:#B4C2D6; --muted:#8395AE;
+    --line:#22324B; --line-2:#1A2840; --accent:#3DB2EA; --accent-ink:#8FD3F5; --accent-soft:#0F2E45;
+    --good:#34B67A; --good-soft:#0F3326; --warn:#E0A42A; --warn-soft:#3A2C0C; --crit:#EE6464; --crit-soft:#3E1719;
+    --s-air:#7D8CA3; --s-air-band:rgba(125,140,163,.20); --s-cable:#f07a45; --s-q:#E6EEF8; --s-key:#29b884; --s-ice:#3987e5;
+    --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181;
+    --div-cold:#3987e5; --div-mid:#383835; --div-warm:#e66767;
+    --sky:#13233A; --snow:#DCE6F0; --cable:#0B0F14; --wave:#3DB2EA;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0A1220; --surface:#101B2E; --surface-2:#0D1727; --ink:#E6EEF8; --ink-2:#B4C2D6; --muted:#8395AE;
+  --line:#22324B; --line-2:#1A2840; --accent:#3DB2EA; --accent-ink:#8FD3F5; --accent-soft:#0F2E45;
+  --good:#34B67A; --good-soft:#0F3326; --warn:#E0A42A; --warn-soft:#3A2C0C; --crit:#EE6464; --crit-soft:#3E1719;
+  --s-air:#7D8CA3; --s-air-band:rgba(125,140,163,.20); --s-cable:#f07a45; --s-q:#E6EEF8; --s-key:#29b884; --s-ice:#3987e5;
+  --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181;
+  --div-cold:#3987e5; --div-mid:#383835; --div-warm:#e66767;
+  --sky:#13233A; --snow:#DCE6F0; --cable:#0B0F14; --wave:#3DB2EA;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent-ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,output,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.app{display:grid;grid-template-columns:348px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;overflow:auto;background:var(--surface);border-right:1px solid var(--line);padding:18px 16px 32px}
+.main{min-width:0;padding:20px 24px 48px;display:flex;flex-direction:column;gap:16px}
+
+/* sidebar */
+.brand{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.brand-mark{width:34px;height:34px;flex:none}
+.brand h1{font:600 13px/1.2 var(--f-display);letter-spacing:.02em;margin:0;text-transform:uppercase}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
+.side-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px;font-weight:600}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.preset{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:7px 9px;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+.preset:hover{border-color:var(--accent)}
+.preset[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.preset b{display:block;font-size:12.5px;font-weight:600;line-height:1.25}
+.preset span{display:block;font-size:11px;color:var(--muted);line-height:1.3;margin-top:2px}
+.grp{border-top:1px solid var(--line-2);padding:4px 0}
+.grp summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:9px 0;font-weight:600;font-size:13.5px}
+.grp summary::-webkit-details-marker{display:none}
+.grp summary::before{content:'';width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(-45deg);margin-right:8px;transition:transform .15s;flex:none;position:relative;top:-1px}
+.grp[open] summary::before{transform:rotate(45deg)}
+.grp summary span:first-of-type{flex:1}
+.grp-sub{color:var(--muted);font-weight:400;font-size:11.5px;text-align:right;max-width:52%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp-body{display:flex;flex-direction:column;gap:11px;padding:2px 0 12px}
+.ctl-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl label,.ctl-l{font-size:12.5px;color:var(--ink-2)}
+.ctl output{font-size:12px;color:var(--ink);white-space:nowrap}
+.ctl .hint{margin:3px 0 0;font-size:11px;color:var(--muted);line-height:1.35}
+.ctl select,.ctl input[type=date],.ctl input[type=number],.ctl textarea{width:100%;margin-top:4px;border:1px solid var(--line);background:var(--surface-2);border-radius:7px;padding:6px 8px;font-size:13px}
+.ctl textarea{font-family:var(--f-mono);font-size:11.5px;min-height:92px;resize:vertical}
+input[type=range]{width:100%;margin:6px 0 0;accent-color:var(--accent);height:18px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:5px}
+.seg button{border:1px solid var(--line);background:var(--surface-2);border-radius:7px;padding:6px 4px;font-size:11.5px;cursor:pointer;line-height:1.2}
+.seg button[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chk{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.chk input{accent-color:var(--accent);width:16px;height:16px}
+.row2{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12.5px;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.seedrow{display:flex;gap:6px;align-items:center}
+.seedrow input{width:90px !important;margin:0 !important}
+.csv-status{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+/* header */
+.top{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--line);border-radius:14px;padding:18px 22px}
+.top-waves{position:absolute;right:-20px;top:-10px;width:560px;height:180px;opacity:.16;pointer-events:none}
+.top-row{position:relative;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.top h2{font:600 clamp(18px,2.2vw,26px)/1.15 var(--f-display);margin:0;letter-spacing:.01em;text-wrap:balance;max-width:26ch}
+.top p{margin:6px 0 0;color:var(--ink-2);max-width:70ch}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.chipline{position:relative;display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface);color:var(--ink-2)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:1.3fr repeat(5,1fr);background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.kpi{padding:14px 16px;border-left:1px solid var(--line-2);min-width:0}
+.kpi:first-child{border-left:0}
+.kpi .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .v{font:500 24px/1.15 var(--f-mono);margin-top:6px;white-space:nowrap}
+.kpi .v small{font-size:13px;color:var(--muted);margin-left:2px}
+.kpi .s{font-size:11.5px;color:var(--muted);margin-top:3px}
+.verdict .v{font:600 15px/1.25 var(--f-display);white-space:normal}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px 3px 8px}
+.pill::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--crit-soft);color:var(--crit)}
+.tone-ok{color:var(--good)} .tone-warn{color:var(--warn)} .tone-bad{color:var(--crit)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.card-h h3{margin:0;font-size:14px;font-weight:600}
+.card-h .sub{color:var(--muted);font-size:12px}
+.visrow{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px}
+.scene svg,.cross svg{display:block;width:100%;height:auto}
+.readout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line-2);border:1px solid var(--line-2);border-radius:10px;overflow:hidden;margin-top:10px}
+.readout div{background:var(--surface-2);padding:7px 10px;min-width:0}
+.readout dt{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readout dd{margin:2px 0 0;font:500 13.5px var(--f-mono);white-space:nowrap}
+
+/* timeline */
+.timeline{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px;position:sticky;top:8px;z-index:5;box-shadow:0 6px 18px -12px rgba(10,20,40,.35)}
+.play{width:36px;height:36px;border-radius:50%;border:0;background:var(--accent);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.play svg{width:14px;height:14px}
+.timeline input[type=range]{flex:1;margin:0;min-width:80px}
+.tl-date{font:500 13px var(--f-mono);min-width:150px;text-align:right;white-space:nowrap}
+.speed{border:1px solid var(--line);background:var(--surface-2);border-radius:7px;padding:4px 6px;font-size:12px}
+
+/* charts */
+.charts{display:flex;flex-direction:column;gap:12px}
+.chart-card{position:relative}
+.chart{position:relative;width:100%}
+.chart svg{display:block;overflow:visible}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.legend i.sq{height:10px;width:10px;border-radius:2px}
+.legend i.band{height:10px;width:14px;border-radius:2px}
+.gradlegend{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
+.gradlegend span.bar{width:120px;height:8px;border-radius:4px;display:inline-block}
+svg .grid{stroke:var(--line-2);stroke-width:1}
+svg .axis{stroke:var(--line);stroke-width:1}
+svg .tick{fill:var(--muted);font:10.5px var(--f-mono)}
+svg .hl-label{font:500 10.5px var(--f-body);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+svg .xh line{stroke:var(--ink-2);stroke-width:1;stroke-dasharray:3 3}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px -10px rgba(10,20,40,.35);padding:8px 10px;font-size:12px;min-width:170px;z-index:4;display:none}
+.tip .td{font:500 11.5px var(--f-mono);color:var(--muted);margin-bottom:4px}
+.tip .tr{display:flex;justify-content:space-between;gap:14px;white-space:nowrap}
+.tip .tr b{font:500 12px var(--f-mono)}
+.tip .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.empty-note{font-size:12px;color:var(--muted);padding:6px 0}
+
+/* bottom */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px}
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:430px;overflow:auto}
+.events li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:9px 4px;border-top:1px solid var(--line-2);cursor:pointer;border-radius:6px}
+.events li:first-child{border-top:0}
+.events li:hover{background:var(--surface-2)}
+.events .sev{width:4px;border-radius:2px;grid-row:span 2}
+.events .sev.crit{background:var(--crit)} .events .sev.warn{background:var(--warn)} .events .sev.info{background:var(--accent)}
+.events .et{font-weight:600;font-size:13px}
+.events .ed{font-size:12px;color:var(--ink-2)}
+.events .ed .mono{font-size:11.5px;color:var(--muted)}
+.pass{width:100%;border-collapse:collapse;font-size:12.5px}
+.pass th{text-align:left;font-weight:500;color:var(--ink-2);padding:7px 10px 7px 0;vertical-align:top;width:38%;border-top:1px solid var(--line-2)}
+.pass td{padding:7px 0;border-top:1px solid var(--line-2);vertical-align:top}
+.pass td .mono{font-size:12.5px}
+.pass td small{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
+.recs{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:12.5px}
+.tblwrap{overflow-x:auto}
+.cmp{width:100%;border-collapse:collapse;font-size:12.5px;min-width:620px}
+.cmp th{font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:right;padding:8px 10px;border-bottom:1px solid var(--line)}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp td{padding:8px 10px;border-bottom:1px solid var(--line-2);text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.cmp td:first-child{font-family:var(--f-body)}
+.cmp tr.cur td{background:var(--accent-soft)}
+.cmp .note{font-family:var(--f-body);font-size:11px;color:var(--muted);display:block}
+.method{font-size:13px;color:var(--ink-2)}
+.method summary{cursor:pointer;font-weight:600;color:var(--ink);font-size:14px}
+.method h4{margin:14px 0 4px;font-size:13px;color:var(--ink)}
+.method ul{margin:4px 0;padding-left:18px}
+.method li{margin:3px 0}
+.method p{max-width:88ch}
+.formula{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;display:inline-block;margin:4px 0}
+.foot{font-size:11.5px;color:var(--muted);text-align:center;padding-top:4px}
+.copybox{width:100%;min-height:120px;margin-top:8px;font:11.5px var(--f-mono)}
+.side-toggle{display:none}
+body.present .side{display:none}
+body.present .app{grid-template-columns:1fr}
+body.present{font-size:15px}
+body.present .main{padding:18px 28px 40px}
+body.present .side-toggle{display:inline-flex}
+
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .kpi:nth-child(4){border-left:0}
+  .kpi:nth-child(n+4){border-top:1px solid var(--line-2)}
+}
+@media (max-width:1100px){
+  .visrow,.duo{grid-template-columns:1fr}
+}
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .main{padding:16px}
+}
+@media (max-width:620px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi{border-left:0;border-top:1px solid var(--line-2)}
+  .kpi:first-child{grid-column:1/-1;border-top:0}
+  .readout{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tl-date{min-width:0;font-size:11.5px}
+  .top-waves{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side" aria-label="Параметры моделирования">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15.5" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="17" cy="17" r="4.5" fill="var(--accent)"/><path d="M3 22c4-6 8 6 14 0s10 6 14 0" fill="none" stroke="var(--accent)" stroke-width="1.6" opacity=".55"/></svg>
+      <div><h1>МУКС · сегмент</h1><p>Параметры трассы и среды</p></div>
+    </div>
+    <div class="side-label">Готовые сценарии</div>
+    <div class="presets" id="presets"></div>
+    <div id="controls"></div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <svg class="top-waves" viewBox="0 0 560 180" aria-hidden="true" id="waves"></svg>
+      <div class="top-row">
+        <div>
+          <h2>Климат, грунт и кабель против квантового канала</h2>
+          <p>Демонстрационная модель сегмента межуниверситетской квантовой сети: как погода, способ прокладки и конструкция кабеля меняют затухание плеча, QBER и скорость ключа, и где проходят границы нормальной эксплуатации.</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn side-toggle" id="btn-side" type="button">Параметры</button>
+          <button class="btn" id="btn-present" type="button" aria-pressed="false">Режим презентации</button>
+          <button class="btn primary" id="btn-copy" type="button">Скопировать паспорт</button>
+        </div>
+      </div>
+      <div class="chipline" id="chips"></div>
+      <textarea class="copybox" id="copybox" hidden readonly aria-label="Текст паспорта"></textarea>
+    </header>
+
+    <section class="kpis" id="kpis" aria-label="Итоги моделирования"></section>
+
+    <section class="visrow">
+      <div class="card scene">
+        <div class="card-h"><h3 id="scene-title">Разрез трассы</h3><span class="sub" id="scene-sub">состояние в выбранный момент</span></div>
+        <div id="scene"></div>
+        <dl class="readout" id="readout"></dl>
+      </div>
+      <div class="card cross">
+        <div class="card-h"><h3>Кабель в разрезе</h3><span class="sub" id="cross-sub"></span></div>
+        <div id="cross"></div>
+      </div>
+    </section>
+
+    <div class="timeline" role="group" aria-label="Время">
+      <button class="play" id="play" type="button" aria-label="Воспроизвести"><svg viewBox="0 0 14 14" id="play-ico"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg></button>
+      <input type="range" id="cursor" min="0" max="100" value="0" aria-label="Момент времени">
+      <select class="speed" id="speed" aria-label="Скорость воспроизведения"><option value="30">×1</option><option value="15" selected>×2</option><option value="7">×4</option></select>
+      <div class="tl-date" id="tl-date">—</div>
+    </div>
+
+    <section class="charts" id="charts">
+      <div class="card chart-card"><div class="card-h"><h3>Температура воздуха и кабеля</h3><div class="legend" id="lg-temp"></div></div><div class="chart" id="ch-temp"></div><div class="tip"></div></div>
+      <div class="card chart-card" id="card-env"><div class="card-h"><h3 id="env-title">Температура грунта по глубине</h3><div class="legend" id="lg-env"></div></div><div class="chart" id="ch-env"></div><div class="tip"></div></div>
+      <div class="card chart-card"><div class="card-h"><h3>Затухание оптического плеча</h3><div class="legend" id="lg-att"></div></div><div class="chart" id="ch-att"></div><div class="tip"></div></div>
+      <div class="card chart-card"><div class="card-h"><h3>Добавочные потери от воздействий</h3><div class="legend" id="lg-dA"></div></div><div class="chart" id="ch-dA"></div><div class="tip"></div></div>
+      <div class="card chart-card"><div class="card-h"><h3>QBER квантового канала</h3><div class="legend" id="lg-q"></div></div><div class="chart" id="ch-q"></div><div class="tip"></div></div>
+      <div class="card chart-card"><div class="card-h"><h3>Оценка скорости секретного ключа</h3><div class="legend" id="lg-r"></div></div><div class="chart" id="ch-r"></div><div class="tip"></div></div>
+    </section>
+
+    <section class="duo">
+      <div class="card">
+        <div class="card-h"><h3>Критические точки и события</h3><span class="sub" id="ev-sub"></span></div>
+        <ul class="events" id="events"></ul>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Паспорт сегмента (черновик)</h3><span id="pass-pill"></span></div>
+        <table class="pass" id="passport"></table>
+        <div class="side-label" style="margin-top:14px">Рекомендации</div>
+        <ul class="recs" id="recs"></ul>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3>Сравнение стандартов волокна в тех же условиях</h3><span class="sub">тот же кабель, трасса и погода; коэффициент затухания — типичный для категории</span></div>
+      <div class="tblwrap"><table class="cmp" id="cmp-fiber"></table></div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h3>Сравнение способов прокладки</h3><button class="btn" id="btn-inst" type="button">Рассчитать для всех способов</button></div>
+      <div class="tblwrap" id="cmp-inst-wrap"><p class="empty-note">Пересчитывает тепловую и механическую модель для каждого способа прокладки с его типовым кабелем при той же погоде и том же волокне.</p></div>
+    </section>
+
+    <details class="card method">
+      <summary>Как устроена модель и чего она не утверждает</summary>
+      <p><b>Статус.</b> Модель демонстрационная: она показывает направления и порядок величин, а не калиброванный прогноз для линий МУКС. Коэффициенты взяты из открытых стандартов и публикаций либо заданы как явные допущения; любой из них заменяется измерениями конкретного участка.</p>
+      <h4>Цепочка расчёта</h4>
+      <ul>
+        <li><b>Погода</b>: годовой и суточный ход, синоптический шум AR(1), фронты или аномальная волна, ветер со штормами, осадки, снег и гололёд. Можно загрузить свой ряд (ВНИИГМИ-МЦД, ERA5-Land).</li>
+        <li><b>Температура кабеля в грунте</b>: одномерное уравнение теплопроводности в энтальпийной форме с фазовым переходом вода–лёд, 0–8 м, шаг 0,1 м; снег ослабляет охлаждение поверхности. Перед стартом модель «прогревается» три года по климатической норме.</li>
+        <li><b>Подвес</b>: гололёдно-ветровая нагрузка <span class="formula">q = √((w + w<sub>лёд</sub>)² + (½ρC<sub>D</sub>D<sub>эф</sub>V²)²)</span>, натяжение относительно расчётного режима района, нагрев солнцем.</li>
+        <li><b>Затухание</b>: <span class="formula">A = αL + сварки + соединители + макроизгибы + ΔA<sub>T</sub> + ΔA<sub>пучение</sub> + ΔA<sub>лёд</sub> + ΔA<sub>необр</sub> + ΔA<sub>натяжение</sub></span>. Потери на изгиб — экспоненциальная аппроксимация норм G.652/G.657/G.654.</li>
+        <li><b>QBER</b> по упрощённой формуле слабых независимых отсчётов: <span class="formula">Q = (e·S + ½B)/(S + B),  S = μ·10<sup>−A/10</sup>·η</span>; e складывается из собственной ошибки оптики и остаточной ошибки подстройки поляризации (скорость дрейфа × время реакции).</li>
+        <li><b>Ключ</b> нормирован на открытый ориентир «скорость при 10 дБ» и масштабируется по доле регистраций и функции 1 − h(Q) − f·h(Q), f = 1,16.</li>
+        <li><b>Внешние повреждения</b> (земляные работы, падение деревьев) считаются пуассоновским потоком с интенсивностью по способу прокладки. На кривые они не накладываются и оцениваются отдельно.</li>
+      </ul>
+      <h4>Что модель сознательно не делает</h4>
+      <ul>
+        <li>Не моделирует внутреннюю архитектуру терминалов КРК: профиль терминала — внешний интерфейс «потери и динамика → QBER». Профили A/B обобщённые и не являются паспортными данными изделий ИнфоТеКС или СМАРТС-Кванттелеком.</li>
+        <li>Не суммирует QBER разных плеч в «QBER сети» и не считает расстояние между городами длиной одного плеча.</li>
+        <li>Не переводит возраст в «дБ/км за год»: необратимые изменения привязаны к циклам промерзания, осадке и термоциклам.</li>
+        <li>Секундные переходные процессы (гроза на ОКГТ, проход поезда) видны в списке событий и в среднем эффекте, но на часовом шаге отдельными пиками не отображаются.</li>
+      </ul>
+      <h4>Опорные источники</h4>
+      <ul>
+        <li>ITU-T G.652 / G.657 / G.654 (ред. 08/2024) — затухание, изгибные потери, ПМП; L.100 / L.101 / L.102 — канализация, грунт, подвес.</li>
+        <li>Hocker, 1979 — температурно-механическая чувствительность волокна; Shiue &amp; Hsu, 2000 — остаточные потери при термоциклах; Charlton et al., 2017 — поляризационные возмущения на ОКГТ при молнии.</li>
+        <li>Спецификации Инкаб ДПС-П (−60…+70 °C, 15 D) и ОКГТ-Ц-24 (−60…+85 °C, 20 D, Ø 8,2 мм).</li>
+        <li>Карточка «Квалион» (СМАРТС-Кванттелеком): ≥700 бит/с при 10 дБ, дальность при 20 дБ; презентация ИнфоТеКС (InfotecsFest): ≤0,2 дБ/км на 1550 нм, QTS до 100 км.</li>
+        <li>Данные для новых регионов: ВНИИГМИ-МЦД, ERA5-Land, SoilGrids, ESA CCI Permafrost, Copernicus DEM, CMIP6.</li>
+      </ul>
+    </details>
+    <div class="foot">Демонстрационная модель для обсуждения методики паспорта сегмента МУКС. Все расчёты выполняются в браузере.</div>
+  </main>
+</div>
+
+<script>
+'use strict';
+/*MODEL-START*/
+const MONTHS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const TAU2=Math.PI*2;
+const clamp=(x,a,b)=>x<a?a:x>b?b:x;
+const plateau=(t,s,d,w)=>0.5*(Math.tanh((t-s)/w)-Math.tanh((t-s-d)/w));
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gauss(r){let u=0;while(u===0)u=r();const v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(TAU2*v);}
+function poisson(r,lam){if(lam<=0)return 0;if(lam>30)return Math.max(0,Math.round(lam+Math.sqrt(lam)*gauss(r)));const L=Math.exp(-lam);let k=0,q=1;do{k++;q*=r();}while(q>L);return k-1;}
+
+/* ---------- справочники (ориентировочные открытые значения) ---------- */
+const REGIONS={
+  msk:{n:'Москва',tm:5.8,aa:12.8,ad:4.0,sn:45,wind:3.0,iceReg:2,thunder:25,sigma:4.0},
+  spb:{n:'Санкт-Петербург',tm:5.8,aa:12.2,ad:3.5,sn:30,wind:3.3,iceReg:2,thunder:18,sigma:3.8},
+  nnv:{n:'Нижний Новгород',tm:4.8,aa:14.0,ad:4.5,sn:50,wind:3.5,iceReg:2,thunder:25,sigma:4.2},
+  kzn:{n:'Казань',tm:5.0,aa:15.2,ad:4.5,sn:45,wind:3.6,iceReg:2,thunder:25,sigma:4.4},
+  sam:{n:'Самара',tm:5.5,aa:15.7,ad:5.0,sn:40,wind:4.0,iceReg:3,thunder:30,sigma:4.5},
+  ekb:{n:'Екатеринбург (Урал)',tm:3.5,aa:15.9,ad:5.0,sn:50,wind:3.5,iceReg:4,thunder:25,sigma:4.8},
+  nsk:{n:'Новосибирск',tm:1.9,aa:18.2,ad:5.5,sn:50,wind:3.8,iceReg:3,thunder:25,sigma:5.0},
+  yak:{n:'Якутск',tm:-8.8,aa:29.4,ad:6.0,sn:35,wind:2.0,iceReg:2,thunder:10,sigma:4.5},
+  ptz:{n:'Петрозаводск (Карелия)',tm:3.2,aa:13.3,ad:3.5,sn:55,wind:3.3,iceReg:2,thunder:15,sigma:4.0}
+};
+const SOILS={
+  loam:{n:'Суглинок',k:1.3,C:2.4e6,w:0.30,heave:0.7,ice:0,settle:0,pat:'loam'},
+  clay:{n:'Глина',k:1.1,C:2.7e6,w:0.38,heave:0.85,ice:0,settle:0,pat:'clay'},
+  sandw:{n:'Песок влажный',k:1.9,C:2.5e6,w:0.22,heave:0.2,ice:0,settle:0,pat:'sand'},
+  sandd:{n:'Песок сухой',k:0.35,C:1.4e6,w:0.05,heave:0.05,ice:0,settle:0,pat:'sand'},
+  peat:{n:'Торф водонасыщенный',k:0.45,C:3.4e6,w:0.75,heave:0.5,ice:0,settle:0.02,pat:'peat'},
+  rock:{n:'Скальный грунт',k:2.8,C:2.1e6,w:0.02,heave:0,ice:0,settle:0,pat:'rock'},
+  perma:{n:'Льдистый мёрзлый грунт (ММП)',k:1.6,C:2.2e6,w:0.40,heave:0.6,ice:0.8,settle:0,pat:'loam'}
+};
+const INSTALL={
+  ground:{n:'Непосредственно в грунте',s:'в грунте',ground:true,cable:'okb',depth:1.2,soilC:1.0,rail:0.3,cut:0.004},
+  duct:{n:'Кабельная канализация (труба ПНД)',s:'в канализации',ground:true,duct:true,cable:'okl',depth:0.9,soilC:0.5,rail:0.2,cut:0.002},
+  adss:{n:'Подвес на опорах (ADSS / ОКСН)',s:'подвес ADSS',aer:true,cable:'adss',span:70,spanD:70,rail:1.0,cut:0.008,sopK:1},
+  opgw:{n:'Грозотрос ЛЭП (ОКГТ / OPGW)',s:'ОКГТ на ЛЭП',aer:true,opgw:true,cable:'okgt',span:250,spanD:250,rail:0.3,cut:0.001,sopK:0.5},
+  tunnel:{n:'Коллектор / тоннель',s:'в коллекторе',tunnel:true,cable:'okl',rail:0.1,cut:0.0005}
+};
+const CABLES={
+  okb:{n:'ОКБ — модульный, броня из стальных проволок',s:'ОКБ',smu:0.012,thr:-10,tmin:-40,tmax:60,cpl:1.0,D:16,bendD:20,w:3.2,win:0.30,kind:'armor'},
+  okl:{n:'ОКЛ — модульный, гофрированная стальная лента',s:'ОКЛ',smu:0.015,thr:-10,tmin:-40,tmax:60,cpl:0.8,D:12,bendD:20,w:1.6,win:0.30,kind:'tape'},
+  adss:{n:'ОКСН (ADSS) — самонесущий, арамидные нити',s:'ОКСН',smu:0.015,thr:-15,tmin:-60,tmax:70,cpl:0.6,D:12.5,bendD:15,w:1.3,win:0.30,kind:'adss'},
+  okgt:{n:'ОКГТ (OPGW) — стальная трубка в повивах проволок',s:'ОКГТ',smu:0.008,thr:-20,tmin:-60,tmax:85,cpl:0.3,D:8.2,bendD:20,w:3.0,win:0.40,kind:'opgw'},
+  tb:{n:'Плотный буфер — внутренний/наружный',s:'плотный буфер',smu:0.06,thr:0,tmin:-20,tmax:60,cpl:1.3,D:6.0,bendD:10,w:0.4,win:0.05,kind:'tight'}
+};
+const FIBERS={
+  g652d:{n:'G.652.D',a:0.20,mu:1.0,b:[30,0.0005,15,0.5],mfd:9.2,trench:false,minR:30,note:'стандартное одномодовое; норма ≤ 0,30 дБ/км (ред. 08/2024)'},
+  g657a1:{n:'G.657.A1',a:0.20,mu:0.7,b:[10,0.75,15,0.025],mfd:8.8,trench:false,minR:10,note:'совместимо с G.652.D, дизайн-радиус 10 мм'},
+  g657a2:{n:'G.657.A2',a:0.20,mu:0.5,b:[7.5,0.5,15,0.003],mfd:8.6,trench:true,minR:7.5,note:'депрессированное кольцо, дизайн-радиус 7,5 мм'},
+  g657b3:{n:'G.657.B3',a:0.21,mu:0.35,b:[5,0.15,15,0.003],mfd:8.6,trench:true,minR:5,note:'дизайн-радиус 5 мм; совместимость с G.652.D проверять'},
+  g654e:{n:'G.654.E',a:0.17,mu:1.6,b:[30,0.001,15,1.5],mfd:12.5,trench:false,minR:30,note:'большая эффективная площадь; норма ≤ 0,23 дБ/км'},
+  g655:{n:'G.655',a:0.21,mu:1.1,b:[30,0.0005,15,0.6],mfd:9.6,trench:false,minR:30,note:'ненулевая смещённая дисперсия'}
+};
+const PROFILES={
+  A:{n:'Профиль A — фазовое кодирование (обобщённый)',mu:0.2,freq:100,eta:10,pd:5,eopt:1.0,tau:5,pol:1.0,amax:20,thr:6,rref:1000},
+  B:{n:'Профиль B — поднесущие частоты, SCW (обобщённый)',mu:0.25,freq:100,eta:10,pd:10,eopt:1.5,tau:5,pol:0.6,amax:20,thr:6,rref:700},
+  C:{n:'Пользовательский'}
+};
+const ICE_DESIGN=[0,10,15,20,25,30];
+const DIGS={low:0.5,med:1,high:3};
+const MTTR={city:8,sub:24,remote:72};
+const COMP_NAMES=['Температурный микроизгиб','Морозное пучение','Лёд в канализации','Необратимые изменения и осадка','Натяжение подвеса'];
+
+function startMs(s){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s||'');return m?Date.UTC(+m[1],+m[2]-1,+m[3]):Date.UTC(2026,9,1);}
+function doyOf(ms){const d=new Date(ms);return (ms-Date.UTC(d.getUTCFullYear(),0,1))/864e5+1;}
+
+/* ---------- погода ---------- */
+function genWeather(p){
+  const csv=p.mode==='csv'&&p.csvData&&p.csvData.T.length>24?p.csvData:null;
+  const N=csv?csv.T.length:Math.round(p.dur*24);
+  const t0=csv&&csv.t0!=null?csv.t0:startMs(p.start);
+  const bh=N<=24*95?1:N<=24*370?3:N<=24*740?6:24;
+  const rng=mulberry32((p.seed|0)*9973+17);
+  const Tair=new Float32Array(N),wind=new Float32Array(N),gust=new Float32Array(N),snow=new Float32Array(N),ice=new Float32Array(N),seas=new Float32Array(N);
+  const wet=new Uint8Array(N),hod=new Uint8Array(N);
+  const doy0=doyOf(t0),h0=new Date(t0).getUTCHours();
+  const F=new Float32Array(N);
+  if(p.mode==='front'){
+    const k=poisson(rng,p.frRate*N/24/30.44);
+    for(let e=0;e<k;e++){
+      const c=rng()*N/24,d=1+3*rng(),sc=Math.cos(TAU2*(doy0+c-201)/365.25);
+      const sign=rng()<(sc<0?0.62:0.5)?1:-1,a=p.frAmp*(0.6+0.4*rng())*sign;
+      const i0=Math.max(0,Math.floor((c-1.5)*24)),i1=Math.min(N,Math.ceil((c+d+1.5)*24));
+      for(let i=i0;i<i1;i++)F[i]+=a*plateau(i/24,c,d,0.25);
+    }
+  }
+  const Sf=new Float32Array(N).fill(1);
+  const ks=poisson(rng,p.storms*N/24/30.44);
+  for(let e=0;e<ks;e++){
+    const c=rng()*N,d=6+18*rng(),f=1.8+0.8*rng();
+    const i0=Math.max(0,Math.floor(c-8)),i1=Math.min(N,Math.ceil(c+d+8));
+    for(let i=i0;i<i1;i++)Sf[i]=Math.max(Sf[i],1+(f-1)*plateau(i,c,d,2.5));
+  }
+  const phiS=Math.exp(-1/72),phiW=Math.exp(-1/8),qS=Math.sqrt(1-phiS*phiS),qW=Math.sqrt(1-phiW*phiW);
+  const regF=[0,0.5,0.75,1,1.3,1.6][p.iceReg]||1,bd=ICE_DESIGN[p.iceReg]||15;
+  const seas0=Math.cos(TAU2*(doy0-201)/365.25);
+  let xs=0,xw=0,isWet=0,sn=clamp(-(p.tm+p.aa*seas0)/6,0,1)*p.sn*0.7,ic=0;
+  for(let i=0;i<N;i++){
+    const td=i/24,h=(h0+i)%24,sc=Math.cos(TAU2*(doy0+td-201)/365.25);
+    seas[i]=sc;hod[i]=h;
+    const daily=p.ad*Math.cos(TAU2*(h-15)/24)*(1+0.25*sc);
+    xs=phiS*xs+qS*gauss(rng);
+    const base=p.tm+p.aa*sc+p.trend*td/3652.5;
+    const sig=p.sigma*(1-0.3*sc);
+    let T;
+    switch(p.mode){
+      case 'sine':T=base+daily;break;
+      case 'front':T=base+daily+0.5*sig*xs+F[i];break;
+      case 'lin':T=p.lin0+(p.lin1-p.lin0)*i/Math.max(1,N-1)+daily;break;
+      case 'ext':T=base+daily+sig*xs+p.extAmp*plateau(td,p.extDay,p.extDur,0.8);break;
+      case 'csv':T=csv?csv.T[i]+(csv.coarse?daily:0):base+daily+sig*xs;break;
+      default:T=base+daily+sig*xs;
+    }
+    Tair[i]=T;
+    isWet=isWet?(rng()<0.14?0:1):(rng()<0.035?1:0);
+    wet[i]=isWet;
+    xw=phiW*xw+qW*gauss(rng);
+    const V=p.wind*(1-0.15*sc)*Math.max(0.08,1+0.5*xw)*Sf[i];
+    wind[i]=V;gust[i]=1.45*V+1;
+    if(isWet&&T<0.5)sn+=(p.sn*1.1-sn)*0.012;
+    sn*=0.99985;
+    if(T>0)sn-=0.07*T*(1+isWet);
+    sn=clamp(sn,0,p.sn*1.4+1);snow[i]=sn;
+    if(isWet&&T<=0.5&&T>=-6&&rng()<0.35)ic+=0.8*regF;
+    if(T>0.5)ic-=0.25*T+0.05;
+    if(gust[i]>15)ic-=0.15;
+    ic=clamp(ic-0.003,0,1.6*bd);ice[i]=ic;
+  }
+  return {N,t0,bh,doy0,Tair,wind,gust,snow,ice,seas,wet,hod};
+}
+
+/* ---------- среда: грунт / подвес / коллектор ---------- */
+function simulateEnv(p){
+  const inst=INSTALL[p.install],cab=CABLES[p.cable],soil=SOILS[p.soil];
+  const W=genWeather(p),N=W.N;
+  const E={W,N,bh:W.bh,inst,cab,soil,
+    Tc:new Float32Array(N),lf:new Float32Array(N).fill(1),zf:new Float32Array(N),zt:new Float32Array(N).fill(NaN),
+    heave:new Float32Array(N),dice:new Float32Array(N),settle:new Float32Array(N),fcyc:new Float32Array(N),tcyc:new Float32Array(N),
+    tens:new Float32Array(N),strain:new Float32Array(N),q:new Float32Array(N),sopW:new Float32Array(N),sopT:new Float32Array(N),sopR:new Float32Array(N),
+    prof:null,nzs:0,dz:0.1,zmax:0,light:[]};
+  if(inst.ground)groundModel(p,E);else if(inst.aer)aerialModel(p,E);else tunnelModel(p,E);
+  let cold=false,nc=0;
+  for(let i=0;i<N;i++){
+    const T=E.Tc[i];
+    if(!cold&&T<cab.thr-1)cold=true;else if(cold&&T>cab.thr+1){cold=false;nc++;}
+    E.tcyc[i]=nc;
+    const dT=i>0?Math.abs(T-E.Tc[i-1]):0;
+    E.sopT[i]=0.05*dT/3600;
+    const hh=W.hod[i];
+    E.sopR[i]=0.02*(p.rail/24)*(hh>=6&&hh<=23?1.2:0.5)*inst.rail;
+  }
+  if(inst.aer&&p.thunder>0){
+    const r=mulberry32((p.seed|0)*31+7),k=poisson(r,p.thunder*(N/24/365)*0.6*(p.L/100)*(inst.opgw?1.5:0.6));
+    for(let j=0;j<k;j++)for(let t=0;t<400;t++){const i=Math.floor(r()*N);const w=Math.pow(Math.max(0,W.seas[i]),2)*(W.hod[i]>=12&&W.hod[i]<=20?1:0.3);if(r()<w){E.light.push(i);break;}}
+    E.light.sort((a,b)=>a-b);
+  }
+  return E;
+}
+function groundModel(p,E){
+  const W=E.W,N=E.N,soil=E.soil,inst=E.inst;
+  const dz=0.1,NZ=81,C=soil.C,Lw=334e6*soil.w,DTf=1,kU=soil.k,kF=soil.k*(1+0.8*soil.w),zc=p.depth;
+  const HofT=T=>T<=-DTf?C*T:(T<=0?C*T+Lw*(T+DTf)/DTf:C*T+Lw);
+  const TofH=H=>H<=-C*DTf?H/C:(H<=Lw?(H-Lw)/(C+Lw/DTf):(H-Lw)/C);
+  const lfT=T=>T<=-DTf?0:(T>=0?1:(T+DTf)/DTf);
+  const nSub=Math.ceil(3600/(0.45*dz*dz*C/Math.max(kU,kF))),dt=3600/nSub,cc=dt/(dz*dz);
+  const T=new Float64Array(NZ),H=new Float64Array(NZ),kk=new Float64Array(NZ);
+  let Tb=p.tm+1.5;
+  T.fill(Tb);for(let j=0;j<NZ;j++)H[j]=HofT(T[j]);
+  const surf=(Ta,sn)=>sn>1?(Ta<0?Ta*Math.exp(-sn/25):0):(Ta>0?Ta+1.5:Ta);
+  function step(Ts){
+    T[0]=Ts;T[NZ-1]=Tb;
+    for(let s=0;s<nSub;s++){
+      for(let j=0;j<NZ;j++)kk[j]=kF+(kU-kF)*lfT(T[j]);
+      let prev=0.5*(kk[0]+kk[1])*(T[1]-T[0]);
+      for(let j=1;j<NZ-1;j++){const fl=0.5*(kk[j]+kk[j+1])*(T[j+1]-T[j]);H[j]+=cc*(fl-prev);prev=fl;}
+      for(let j=1;j<NZ-1;j++)T[j]=TofH(H[j]);
+    }
+  }
+  const frostDepth=()=>{if(lfT(T[1])>=0.5)return 0;let j=1;while(j<NZ-1&&lfT(T[j])<0.5)j++;return (j-0.5)*dz;};
+  const thawDepth=()=>{if(lfT(T[1])<0.5)return NaN;let j=1;while(j<NZ-1&&lfT(T[j])>=0.5)j++;return j<NZ-1?(j-0.5)*dz:NaN;};
+  // разгон: три года той же климатической нормы (без тренда и аномалий), заканчивающиеся в момент старта
+  const SW=genWeather(Object.assign({},p,{mode:'rand',trend:0,dur:3*365.25,seed:(p.seed|0)+1000,
+    start:new Date(W.t0-3*365.25*864e5).toISOString().slice(0,10)}));
+  let s0=0;for(let h=0;h<SW.N;h++)s0+=surf(SW.Tair[h],SW.snow[h]);
+  Tb=s0/SW.N+0.2;
+  for(let j=0;j<NZ;j++){T[j]=Tb;H[j]=HofT(Tb);}
+  let maxThaw=0;
+  for(let y=0;y<3;y++){
+    let sum=0;
+    for(let h=y*8766;h<Math.min(SW.N,(y+1)*8766);h++){
+      const Ts=surf(SW.Tair[h],SW.snow[h]);sum+=Ts;step(Ts);
+      const zt=thawDepth();if(zt>maxThaw)maxThaw=zt;
+    }
+    Tb=sum/8766+0.2;
+  }
+  const nzs=Math.min(NZ,Math.ceil(Math.max(3,zc+1)/dz)+1),nb=Math.ceil(N/E.bh);
+  E.prof=new Float32Array(nb*nzs);E.nzs=nzs;E.zmax=(nzs-1)*dz;E.dz=dz;E.maxThaw0=maxThaw;
+  const jc=zc/dz,j0=Math.floor(jc),fr=jc-j0;
+  let hv=0,di=0,st=0,fc=0,frozen=false;
+  for(let i=0;i<N;i++){
+    step(surf(W.Tair[i],W.snow[i]));
+    const Tc=T[j0]*(1-fr)+T[Math.min(NZ-1,j0+1)]*fr,lf=lfT(Tc);
+    E.Tc[i]=Tc;E.lf[i]=lf;
+    const zt=thawDepth();E.zf[i]=frostDepth();E.zt[i]=zt;
+    const tgt=soil.heave*(1-lf);hv+=(tgt-hv)/(tgt>hv?72:240);E.heave[i]=hv;
+    if(!frozen&&lf<0.3)frozen=true;else if(frozen&&lf>0.7){frozen=false;fc++;}
+    E.fcyc[i]=fc;
+    if(inst.duct&&p.water>0){if(Tc<-0.3)di+=(1-di)/48;else if(Tc>0.2)di-=di/24;}
+    E.dice[i]=di;
+    if(soil.ice>0&&zt>maxThaw){if(zt>zc-0.3)st+=soil.ice*(zt-maxThaw)*0.2;maxThaw=zt;}
+    st+=soil.settle/8766;E.settle[i]=st;
+    if((i+1)%E.bh===0||i===N-1){const b=Math.floor(i/E.bh);for(let j=0;j<nzs;j++)E.prof[b*nzs+j]=T[j];}
+  }
+}
+function aerialModel(p,E){
+  const W=E.W,cab=E.cab,inst=E.inst,N=E.N;
+  const D=cab.D/1000,bd=(ICE_DESIGN[p.iceReg]||15)/1000;
+  const wI=b=>900*9.81*Math.PI*b*(b+D),qWd=(V,d)=>0.5*1.225*1.1*d*V*V;
+  const qd=Math.max(Math.hypot(cab.w,qWd(29,D)),Math.hypot(cab.w+wI(bd),qWd(14.5,D+2*bd)));
+  const sp=p.span/inst.spanD;E.qd=qd;
+  for(let i=0;i<N;i++){
+    const b=W.ice[i]/1000,g=W.gust[i];
+    const q=Math.hypot(cab.w+wI(b),qWd(g,D+2*b));
+    const r=Math.pow(q/qd,2/3)*Math.pow(sp,2/3);
+    E.q[i]=q;E.tens[i]=r;E.strain[i]=0.25*r;
+    const solar=(3+5*Math.max(0,(W.seas[i]+0.3)/1.3))*Math.max(0,Math.cos(TAU2*(W.hod[i]-13)/24))*(W.wet[i]?0.3:1)/(1+W.wind[i]/4);
+    E.Tc[i]=W.Tair[i]+solar+(inst.opgw?2:0);
+    E.sopW[i]=0.002*g*g*Math.sqrt(sp)*(1+W.ice[i]/10)*inst.sopK;
+  }
+}
+function tunnelModel(p,E){
+  const W=E.W;let x=p.tm+p.aa*W.seas[0];
+  for(let i=0;i<E.N;i++){x+=(W.Tair[i]-x)/240;E.Tc[i]=12+0.3*(x-p.tm);}
+}
+
+/* ---------- оптика и QBER ---------- */
+function lossPerTurn(fb,R){const[R1,L1,R2,L2]=fb.b;const k=Math.log(L1/L2)/(R2-R1);return Math.min(30,L1*Math.exp(-k*(R-R1)));}
+function hbin(q){return q<=0||q>=1?0:-q*Math.log2(q)-(1-q)*Math.log2(1-q);}
+function secFrac(q){return 1-2.16*hbin(q);}
+function budgetBase(p,fb,alpha,L){
+  const nMuft=Math.max(0,Math.ceil(L/p.buildLen)-1);
+  const bend=lossPerTurn(fb,p.bendR)*p.turns*(nMuft+2);
+  return {nMuft,bend,splice:nMuft*p.splice,conn:0.5,fiber:alpha*L,total:alpha*L+nMuft*p.splice+0.5+bend};
+}
+function runOptics(E,p,o={}){
+  const fb=FIBERS[o.fiber||p.fiber],alpha=o.fiber?fb.a:p.alpha,L=o.L!=null?o.L:p.L,tau=(o.tau!=null?o.tau:p.tau)/1000;
+  const cab=E.cab,inst=E.inst,soil=E.soil,N=E.N,mf=fb.mu,quick=!!o.quick;
+  const bb=budgetBase(p,fb,alpha,L),base=bb.total;
+  const hot=L*p.hot,cpl=cab.cpl*(inst.soilC||0),gnd=inst.ground?1:0;
+  const mu=p.mu,eta=p.eta/100,pd=p.pd*1e-6,eopt=p.eopt/100,pol=p.pol,thr=p.thr/100;
+  const Bram=p.dwdm?2e-6*Math.pow(10,p.dwdmP/10)*L*Math.pow(10,-alpha*L/10):0,B=2*pd+Bram;
+  const Sref=mu*0.1*eta,Qref=(eopt*Sref+pd)/(Sref+2*pd),Fref=Math.max(1e-6,secFrac(Qref));
+  const O=quick?null:{A:new Float32Array(N),Q:new Float32Array(N),R:new Float32Array(N),ed:new Float32Array(N),c:[0,1,2,3,4].map(()=>new Float32Array(N))};
+  let maxA=-1e9,maxQ=0,minR=Infinity,okH=0,maxD=0,minMargin=Infinity,maxEd=0;
+  const res=p.reserve;
+  for(let i=0;i<N;i++){
+    const Tc=E.Tc[i];
+    let dT=0;
+    if(Tc<cab.thr){const g=(cab.thr-Tc)/(cab.thr+40);dT=L*cab.smu*mf*g*g;}
+    if(Tc<cab.tmin)dT+=L*0.01*mf*Math.pow((cab.tmin-Tc)/5,2);
+    if(Tc>cab.tmax)dT+=L*0.005*mf*Math.pow((Tc-cab.tmax)/5,2);
+    const dF=hot*0.3*E.heave[i]*mf*cpl;
+    const dD=inst.duct?L*0.15*p.water*0.35*E.dice[i]*mf:0;
+    const dI=hot*0.4*Math.tanh(E.settle[i]/0.05)*mf*cpl+hot*0.02*E.fcyc[i]*soil.heave*mf*cpl*gnd+L*0.004*mf*(cab.smu/0.015)*(1-Math.exp(-E.tcyc[i]/200));
+    const st=E.strain[i],dS=st>cab.win?L*0.01*mf*Math.pow((st-cab.win)/0.1,2):0;
+    const A=base+dT+dF+dD+dI+dS;
+    const w=L*(E.sopT[i]+E.sopR[i]+E.sopW[i])*pol;
+    const th=Math.min(Math.PI/2,w*tau),ed=Math.pow(Math.sin(th/2),2);
+    const S=mu*Math.pow(10,-A/10)*eta;
+    const e=Math.min(0.5,eopt+ed*(1-2*eopt));
+    const Q=(e*S+0.5*B)/(S+B);
+    const Fq=secFrac(Q),Rk=Fq>0?p.rref*(S/Sref)*Fq/Fref:0;
+    if(o.stop&&(A+res>p.amax||Q>thr))return {ok:false};
+    if(A>maxA)maxA=A;if(Q>maxQ)maxQ=Q;if(Rk<minR)minR=Rk;if(ed>maxEd)maxEd=ed;
+    const d=A-base;if(d>maxD)maxD=d;
+    const mg=p.amax-res-A;if(mg<minMargin)minMargin=mg;
+    if(Q<=thr&&A<=p.amax&&Rk>0)okH++;
+    if(O){O.A[i]=A;O.Q[i]=Q;O.R[i]=Rk;O.ed[i]=ed;O.c[0][i]=dT;O.c[1][i]=dF;O.c[2][i]=dD;O.c[3][i]=dI;O.c[4][i]=dS;}
+  }
+  return {ok:true,O,bb,base,L,maxA,maxQ,minR,avail:okH/N,maxD,minMargin,maxEd,B,Bram};
+}
+function findLmax(E,p,o={}){
+  const ok=L=>runOptics(E,p,Object.assign({},o,{L,quick:true,stop:true})).ok;
+  let lo=1,hi=300;
+  if(!ok(lo))return 0;if(ok(hi))return hi;
+  for(let k=0;k<22;k++){const m=(lo+hi)/2;if(ok(m))lo=m;else hi=m;}
+  return lo;
+}
+function findTauReq(E,p){
+  const ok=t=>{const r=runOptics(E,p,{tau:t,quick:true});return r.maxQ<=p.thr/100;};
+  if(ok(p.tau))return null;
+  if(!ok(0.01))return 0;
+  let lo=0.01,hi=p.tau;for(let k=0;k<24;k++){const m=Math.sqrt(lo*hi);if(ok(m))lo=m;else hi=m;}
+  return lo;
+}
+/*MODEL-END*/
+
+/* ---------- агрегация, события, паспорт ---------- */
+function aggregate(E,O){
+  const N=E.N,bh=E.bh,nb=Math.ceil(N/bh),W=E.W;
+  const f=()=>new Float32Array(nb);
+  const AG={nb,bh,t:new Float64Array(nb),ta:f(),taMin:f(),taMax:f(),tc:f(),snow:f(),zf:f(),zt:f(),tens:f(),ice:f(),gust:f(),wind:f(),A:f(),Q:f(),R:f(),ed:f(),c:[f(),f(),f(),f(),f()],lf:f(),dice:f(),q:f()};
+  for(let b=0;b<nb;b++){
+    const i0=b*bh,i1=Math.min(N,i0+bh);
+    AG.t[b]=W.t0+i0*3600e3;
+    let s=0,mn=1e9,mx=-1e9,tc=0,sn=0,aM=-1e9,aI=i0,qM=-1,rM=1e18,tM=0,iM=0,gM=0,wM=0;
+    for(let i=i0;i<i1;i++){
+      const T=W.Tair[i];s+=T;if(T<mn)mn=T;if(T>mx)mx=T;tc+=E.Tc[i];sn+=W.snow[i];
+      if(O.A[i]>aM){aM=O.A[i];aI=i;}if(O.Q[i]>qM)qM=O.Q[i];if(O.R[i]<rM)rM=O.R[i];
+      if(E.tens[i]>tM)tM=E.tens[i];if(W.ice[i]>iM)iM=W.ice[i];if(W.gust[i]>gM)gM=W.gust[i];if(W.wind[i]>wM)wM=W.wind[i];
+    }
+    const n=i1-i0,il=i1-1;
+    AG.ta[b]=s/n;AG.taMin[b]=mn;AG.taMax[b]=mx;AG.tc[b]=tc/n;AG.snow[b]=sn/n;
+    AG.zf[b]=E.zf[il];AG.zt[b]=E.zt[il];AG.lf[b]=E.lf[il];AG.dice[b]=E.dice[il];AG.q[b]=E.q[il];
+    AG.tens[b]=tM;AG.ice[b]=iM;AG.gust[b]=gM;AG.wind[b]=wM;
+    AG.A[b]=aM;AG.Q[b]=qM;AG.R[b]=rM;AG.ed[b]=O.ed[aI];
+    for(let k=0;k<5;k++)AG.c[k][b]=O.c[k][aI];
+  }
+  return AG;
+}
+function causeAt(E,O,p,i,res){
+  const thr=p.thr/100;
+  if(O.ed[i]>0.004){
+    const S=p.mu*Math.pow(10,-O.A[i]/10)*p.eta/100,e=p.eopt/100;
+    const q0=(e*S+0.5*res.B)/(S+res.B);
+    if(q0<=thr)return 'быстрые изменения поляризации ('+(E.inst.aer?'ветер и гололёд на подвесе':'вибрации и перепады температуры')+')';
+  }
+  let best=-1,bv=0.05;
+  for(let k=0;k<5;k++)if(O.c[k][i]>bv){bv=O.c[k][i];best=k;}
+  if(best<0)return 'базовые потери плеча: длина, затухание волокна, сварки и изгибы';
+  return COMP_NAMES[best].toLowerCase()+' (+'+nf(bv,2)+' дБ)';
+}
+function findEvents(E,O,p,res){
+  const N=E.N,thr=p.thr/100,ev=[],sh=[];
+  const scan=(pred,mk,gapMax)=>{
+    let s=-1,e=-1,gap=0,pk=-1,pv=-Infinity;
+    for(let i=0;i<=N;i++){
+      const v=i<N?pred(i):null;
+      if(v!=null&&v!==false){if(s<0){s=i;pv=-Infinity;}e=i;gap=0;if(v>pv){pv=v;pk=i;}}
+      else if(s>=0){gap++;if(gap>gapMax||i===N){mk(s,e,pk,pv);s=-1;}}
+    }
+  };
+  scan(i=>(O.Q[i]>thr||O.A[i]>p.amax)?O.Q[i]:false,(s,e,pk)=>{
+    const qa=O.A[pk]>p.amax;
+    ev.push({i:s,i1:e,sev:'crit',t:qa?'Потери превышают допустимые для терминала':'QBER выше порога штатной работы',
+      d:'Пик '+nf(O.Q[pk]*100,2)+' %, A = '+nf(O.A[pk],1)+' дБ. Причина: '+causeAt(E,O,p,pk,res)+'.',dur:e-s+1});
+    sh.push([s,e]);
+  },3);
+  scan(i=>(O.A[i]+p.reserve>p.amax&&O.A[i]<=p.amax&&O.Q[i]<=thr)?O.A[i]:false,(s,e,pk)=>{
+    ev.push({i:s,i1:e,sev:'warn',t:'Запас по бюджету потерь исчерпан',d:'A = '+nf(O.A[pk],1)+' дБ при пределе '+nf(p.amax,1)+' дБ и запасе '+nf(p.reserve,1)+' дБ. Причина: '+causeAt(E,O,p,pk,res)+'.',dur:e-s+1});
+  },6);
+  if(E.inst.aer){
+    scan(i=>E.tens[i]>1?E.tens[i]:false,(s,e,pk)=>{
+      const over=E.tens[pk]>1.5;
+      ev.push({i:s,i1:e,sev:over?'crit':'warn',t:over?'Нагрузка на подвес выше допустимой':'Нагрузка на подвес выше расчётной',
+        d:'Натяжение '+nf(E.tens[pk]*100,0)+' % от расчётного: гололёд '+nf(E.W.ice[pk],0)+' мм, порывы '+nf(E.W.gust[pk],0)+' м/с.',dur:e-s+1});
+    },6);
+  }
+  const cab=E.cab;
+  scan(i=>(E.Tc[i]<cab.tmin||E.Tc[i]>cab.tmax)?Math.abs(E.Tc[i]):false,(s,e,pk)=>{
+    ev.push({i:s,i1:e,sev:'crit',t:'Кабель вне паспортного диапазона температур',d:'T кабеля '+nf(E.Tc[pk],1)+' °C при допуске '+cab.tmin+'…+'+cab.tmax+' °C для '+cab.s+'.',dur:e-s+1});
+  },6);
+  if(E.inst.ground&&E.soil.heave>0.15){
+    let fz=false,st=0;
+    for(let i=0;i<N;i++){
+      if(!fz&&E.lf[i]<0.5){fz=true;st=i;}
+      else if(fz&&E.lf[i]>0.8){fz=false;ev.push({i:st,i1:i,sev:'info',t:'Грунт у кабеля промёрз',d:'Цикл промерзания–оттаивания на глубине '+nf(p.depth,2)+' м, '+fmtDur(i-st)+'. Пучение до '+nf(E.soil.heave*100,0)+' % от максимума для грунта.',dur:i-st});}
+    }
+    if(fz)ev.push({i:st,i1:N-1,sev:'info',t:'Грунт у кабеля промёрз',d:'Промерзание на глубине '+nf(p.depth,2)+' м продолжается до конца периода.',dur:N-st});
+  }
+  if(E.inst.duct&&p.water>0)scan(i=>E.dice[i]>0.5?O.c[2][i]:false,(s,e,pk)=>{ev.push({i:s,i1:e,sev:'warn',t:'Вода в канализации замёрзла',d:'Лёд пережимает кабель в затопленных участках трубы: +'+nf(O.c[2][pk],2)+' дБ к потерям плеча. Сохраняется '+fmtDur(e-s+1)+'.',dur:e-s+1});},6);
+  for(const i of E.light)ev.push({i,i1:i,sev:'info',t:E.inst.opgw?'Гроза: удар в грозотрос':'Гроза вблизи линии',d:'Поляризация меняется за микросекунды–миллисекунды: возможен кратковременный сбой подстройки и сброс сессии (Charlton et al., 2017). На часовом шаге модели отдельным пиком не показан.',dur:0});
+  ev.sort((a,b)=>a.i-b.i);
+  return {ev,sh};
+}
+function fmtDur(h){if(h<48)return nf(h,0)+' ч';return nf(h/24,h<240?1:0)+' сут';}
+
+/* ---------- форматирование ---------- */
+function nf(x,d=1){if(x==null||!isFinite(x))return '—';const s=Math.abs(x).toFixed(d);const neg=x<0&&parseFloat(s)!==0;return (neg?'−':'')+s.replace('.',',');}
+function fdate(ms,time){const d=new Date(ms);let s=d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]+' '+d.getUTCFullYear();if(time)s+=', '+String(d.getUTCHours()).padStart(2,'0')+':00';return s;}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------- элементы управления ---------- */
+const GROUPS=[
+  {id:'g-time',t:'Период',open:true},
+  {id:'g-clim',t:'Климат региона',open:true},
+  {id:'g-temp',t:'Температурный сценарий',open:true},
+  {id:'g-route',t:'Трасса и прокладка',open:true},
+  {id:'g-cable',t:'Кабель и волокно',open:false},
+  {id:'g-qkd',t:'Терминал КРК',open:false}
+];
+const sel=(o)=>Object.entries(o).map(([k,v])=>[k,v.n]);
+const CTL=[
+  {g:'g-time',id:'start',l:'Дата начала',type:'date',v:'2026-10-01'},
+  {g:'g-time',id:'dur',l:'Длительность',type:'select',v:'365',o:[['7','7 суток'],['30','30 суток'],['90','3 месяца'],['365','1 год'],['730','2 года'],['1826','5 лет']],show:p=>p.mode!=='csv'},
+  {g:'g-clim',id:'region',l:'Регион (климатическая норма)',type:'select',v:'msk',o:sel(REGIONS)},
+  {g:'g-clim',id:'tm',l:'Среднегодовая температура воздуха',type:'range',min:-15,max:15,step:0.1,v:5.8,u:' °C'},
+  {g:'g-clim',id:'aa',l:'Годовая амплитуда (полуразмах)',type:'range',min:4,max:35,step:0.1,v:12.8,u:' °C',hint:'Половина разницы между средними июля и января'},
+  {g:'g-clim',id:'ad',l:'Суточная амплитуда',type:'range',min:0,max:10,step:0.5,v:4,u:' °C'},
+  {g:'g-clim',id:'sn',l:'Снежный покров, типичный максимум',type:'range',min:0,max:100,step:1,v:45,u:' см',hint:'Снег утепляет грунт и уменьшает глубину промерзания'},
+  {g:'g-clim',id:'wind',l:'Средняя скорость ветра',type:'range',min:0.5,max:10,step:0.1,v:3,u:' м/с'},
+  {g:'g-clim',id:'storms',l:'Штормовых эпизодов в месяц',type:'range',min:0,max:6,step:0.5,v:1,u:''},
+  {g:'g-clim',id:'iceReg',l:'Гололёдный район',type:'select',v:'2',o:[['1','I — 10 мм'],['2','II — 15 мм'],['3','III — 20 мм'],['4','IV — 25 мм'],['5','V — 30 мм и более']]},
+  {g:'g-clim',id:'thunder',l:'Грозовых дней в году',type:'range',min:0,max:60,step:1,v:25,u:''},
+  {g:'g-clim',id:'trend',l:'Климатический тренд',type:'range',min:-1,max:3,step:0.1,v:0.5,u:' °C/10 лет'},
+  {g:'g-temp',id:'mode',l:'Тип колебаний температуры',type:'seg',v:'rand',o:[['sine','Сезонный цикл'],['rand','Случайная погода'],['front','Резкие перепады'],['lin','Линейное'],['ext','Аномальная волна'],['csv','Свои данные']]},
+  {g:'g-temp',id:'sigma',l:'Разброс синоптических колебаний σ',type:'range',min:0,max:10,step:0.1,v:4,u:' °C',show:p=>['rand','front','ext'].includes(p.mode)},
+  {g:'g-temp',id:'frRate',l:'Перепадов (фронтов) в месяц',type:'range',min:0,max:8,step:0.5,v:2,u:'',show:p=>p.mode==='front'},
+  {g:'g-temp',id:'frAmp',l:'Амплитуда перепада',type:'range',min:2,max:25,step:0.5,v:10,u:' °C',hint:'Зимой чаще оттепели, летом похолодания и потепления поровну',show:p=>p.mode==='front'},
+  {g:'g-temp',id:'lin0',l:'Температура в начале периода',type:'range',min:-45,max:35,step:0.5,v:-20,u:' °C',show:p=>p.mode==='lin'},
+  {g:'g-temp',id:'lin1',l:'Температура в конце периода',type:'range',min:-45,max:35,step:0.5,v:10,u:' °C',show:p=>p.mode==='lin'},
+  {g:'g-temp',id:'extDay',l:'Начало волны, сутки от старта',type:'range',min:0,max:365,step:1,v:100,u:' сут',show:p=>p.mode==='ext'},
+  {g:'g-temp',id:'extAmp',l:'Отклонение от нормы',type:'range',min:-30,max:30,step:0.5,v:-15,u:' °C',hint:'Отрицательное — волна холода, положительное — жара или оттепель',show:p=>p.mode==='ext'},
+  {g:'g-temp',id:'extDur',l:'Длительность волны',type:'range',min:1,max:40,step:1,v:10,u:' сут',show:p=>p.mode==='ext'},
+  {g:'g-temp',id:'csv',l:'Ряд температуры воздуха',type:'csv',show:p=>p.mode==='csv'},
+  {g:'g-temp',id:'seed',l:'Реализация случайного ряда',type:'seed',v:7,show:p=>!['sine','lin','csv'].includes(p.mode)},
+  {g:'g-route',id:'install',l:'Способ прокладки',type:'select',v:'ground',o:sel(INSTALL)},
+  {g:'g-route',id:'depth',l:'Глубина прокладки',type:'range',min:0.3,max:3,step:0.05,v:1.2,u:' м',show:p=>INSTALL[p.install].ground},
+  {g:'g-route',id:'soil',l:'Грунт',type:'select',v:'loam',o:sel(SOILS),show:p=>INSTALL[p.install].ground},
+  {g:'g-route',id:'water',l:'Вода в канализации',type:'select',v:'0.3',o:[['0','Сухая'],['0.3','Частично заполнена'],['1','Затоплена']],show:p=>INSTALL[p.install].duct},
+  {g:'g-route',id:'span',l:'Длина пролёта',type:'range',min:30,max:600,step:5,v:70,u:' м',show:p=>INSTALL[p.install].aer},
+  {g:'g-route',id:'L',l:'Длина оптического плеча',type:'range',min:5,max:150,step:1,v:60,u:' км',hint:'Между двумя терминалами КРК, по фактической длине волокна'},
+  {g:'g-route',id:'hot',l:'Неоднородности трассы',type:'range',min:0,max:0.6,step:0.01,v:0.15,u:' на км',hint:'Переходы грунта, пересечения, колодцы — места локальных деформаций'},
+  {g:'g-route',id:'rail',l:'Движение поездов вдоль трассы',type:'range',min:0,max:250,step:5,v:80,u:' в сутки'},
+  {g:'g-route',id:'digs',l:'Земляные работы вблизи трассы',type:'select',v:'med',o:[['low','Редко'],['med','Умеренно'],['high','Часто (город, стройки)']]},
+  {g:'g-route',id:'access',l:'Доступ для ремонта',type:'select',v:'sub',o:[['city','Город, бригада рядом'],['sub','Пригород'],['remote','Удалённый участок']]},
+  {g:'g-cable',id:'cable',l:'Конструкция кабеля',type:'select',v:'okb',o:sel(CABLES)},
+  {g:'g-cable',id:'fiber',l:'Стандарт волокна',type:'select',v:'g652d',o:sel(FIBERS)},
+  {g:'g-cable',id:'alpha',l:'Затухание кабеля на 1550 нм',type:'range',min:0.15,max:0.35,step:0.005,v:0.2,u:' дБ/км',hint:'Значение из паспорта конкретного изделия, а не норма категории'},
+  {g:'g-cable',id:'nfib',l:'Число волокон',type:'select',v:'24',o:[['8','8'],['16','16'],['24','24'],['48','48'],['96','96']]},
+  {g:'g-cable',id:'buildLen',l:'Строительная длина (между муфтами)',type:'range',min:1,max:12,step:0.5,v:4,u:' км'},
+  {g:'g-cable',id:'splice',l:'Потери на одну сварку',type:'range',min:0.01,max:0.2,step:0.01,v:0.05,u:' дБ'},
+  {g:'g-cable',id:'bendR',l:'Радиус укладки волокна в кассетах',type:'range',min:5,max:40,step:0.5,v:30,u:' мм',hint:'Малый радиус допустим только для G.657'},
+  {g:'g-cable',id:'turns',l:'Витков запаса в каждой муфте',type:'range',min:0,max:6,step:1,v:2,u:''},
+  {g:'g-qkd',id:'profile',l:'Профиль терминала',type:'select',v:'B',o:sel(PROFILES),hint:'Обобщённые профили по открытым данным и допущениям, не паспорт изделия'},
+  {g:'g-qkd',id:'mu',l:'Среднее число фотонов μ',type:'range',min:0.05,max:1,step:0.01,v:0.25,u:''},
+  {g:'g-qkd',id:'freq',l:'Частота генерации состояний',type:'range',min:10,max:1000,step:10,v:100,u:' МГц'},
+  {g:'g-qkd',id:'eta',l:'Эффективность детектора',type:'range',min:1,max:80,step:1,v:10,u:' %'},
+  {g:'g-qkd',id:'pd',l:'Темновые отсчёты на строб',type:'range',min:0.1,max:50,step:0.1,v:10,u:'·10⁻⁶'},
+  {g:'g-qkd',id:'eopt',l:'Собственная ошибка оптики',type:'range',min:0,max:5,step:0.1,v:1.5,u:' %'},
+  {g:'g-qkd',id:'tau',l:'Время реакции подстройки поляризации',type:'range',min:0.5,max:100,step:0.5,v:5,u:' мс'},
+  {g:'g-qkd',id:'pol',l:'Чувствительность к дрейфу поляризации',type:'range',min:0,max:1.5,step:0.05,v:0.6,u:'×'},
+  {g:'g-qkd',id:'amax',l:'Допустимые потери канала',type:'range',min:5,max:35,step:0.5,v:20,u:' дБ'},
+  {g:'g-qkd',id:'reserve',l:'Эксплуатационный запас',type:'range',min:0,max:6,step:0.5,v:3,u:' дБ'},
+  {g:'g-qkd',id:'thr',l:'Порог QBER штатной работы',type:'range',min:2,max:11,step:0.1,v:6,u:' %'},
+  {g:'g-qkd',id:'rref',l:'Скорость ключа при потерях 10 дБ',type:'range',min:50,max:5000,step:10,v:700,u:' бит/с'},
+  {g:'g-qkd',id:'dwdm',l:'Классический DWDM-канал в том же волокне',type:'check',v:false},
+  {g:'g-qkd',id:'dwdmP',l:'Мощность классического канала',type:'range',min:-20,max:10,step:0.5,v:0,u:' дБм',show:p=>p.dwdm}
+];
+const CTLMAP=Object.fromEntries(CTL.map(c=>[c.id,c]));
+const QKD_IDS=['mu','freq','eta','pd','eopt','tau','pol','amax','thr','rref'];
+const PRESETS=[
+  {n:'Москва · грунт',d:'Суглинок, 1,2 м, ОКБ, G.652.D',set:{region:'msk',install:'ground',soil:'loam',depth:1.2,fiber:'g652d',L:60,mode:'rand',dur:'365',hot:0.15,rail:80}},
+  {n:'Петербург · канализация',d:'Затопленная труба, оттепели',set:{region:'spb',install:'duct',soil:'clay',depth:0.6,water:'1',fiber:'g652d',L:45,mode:'front',frRate:3,frAmp:10,dur:'365',digs:'high',access:'city',sn:10}},
+  {n:'Урал · подвес',d:'ADSS, пролёт 120 м, гололёд IV',set:{region:'ekb',install:'adss',span:120,fiber:'g652d',L:70,mode:'rand',storms:2,iceReg:'4',dur:'365',access:'remote'}},
+  {n:'Якутия · мерзлота',d:'ММП, кабель в сезонно-талом слое',set:{region:'yak',install:'ground',soil:'perma',depth:1.0,fiber:'g652d',L:50,mode:'ext',extDay:640,extAmp:5,extDur:25,trend:1.0,dur:'1826',access:'remote',rail:0}},
+  {n:'Карелия · торф',d:'Водонасыщенный торф, G.657.A1',set:{region:'ptz',install:'ground',soil:'peat',depth:1.0,fiber:'g657a1',L:55,mode:'rand',dur:'730',rail:30,access:'remote'}},
+  {n:'Самара · ОКГТ',d:'Грозотрос ЛЭП, G.654.E, 90 км',set:{region:'sam',install:'opgw',span:300,fiber:'g654e',L:90,mode:'rand',dur:'365',rail:0}}
+];
+
+let CSVDATA=null;
+const S={p:null,E:null,R:null,O:null,AG:null,ev:null,cursor:0,hover:null,charts:{},playing:false,preset:0};
+const $=s=>document.querySelector(s);
+
+function decimals(step){const s=String(step);return s.includes('.')?s.split('.')[1].length:0;}
+function fmtCtl(c,v){return nf(+v,decimals(c.step))+(c.u||'');}
+function ctlHTML(c){
+  const hint=c.hint?`<p class="hint">${c.hint}</p>`:'';
+  switch(c.type){
+    case 'range':return `<div class="ctl-h"><label for="${c.id}">${c.l}</label><output id="${c.id}-o" for="${c.id}"></output></div><input type="range" id="${c.id}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.v}">${hint}`;
+    case 'select':return `<label class="ctl-l" for="${c.id}">${c.l}</label><select id="${c.id}">${c.o.map(([v,t])=>`<option value="${v}"${v===c.v?' selected':''}>${esc(t)}</option>`).join('')}</select>${hint}`;
+    case 'date':return `<label class="ctl-l" for="${c.id}">${c.l}</label><input type="date" id="${c.id}" value="${c.v}">`;
+    case 'check':return `<label class="chk"><input type="checkbox" id="${c.id}"${c.v?' checked':''}><span>${c.l}</span></label>`;
+    case 'seg':return `<div class="ctl-l" id="${c.id}-lab">${c.l}</div><div class="seg" role="radiogroup" aria-labelledby="${c.id}-lab">${c.o.map(([v,t])=>`<button type="button" role="radio" data-v="${v}" aria-checked="${v===c.v}">${t}</button>`).join('')}</div><input type="hidden" id="${c.id}" value="${c.v}">`;
+    case 'seed':return `<div class="ctl-h"><label for="${c.id}">${c.l}</label></div><div class="seedrow"><input type="number" id="${c.id}" min="1" max="99999" value="${c.v}"><button class="btn" type="button" id="seed-btn">Новая реализация</button></div>`;
+    case 'csv':return `<label class="ctl-l" for="csv">${c.l}</label><textarea id="csv" spellcheck="false" placeholder="2026-01-01;-8,4&#10;2026-01-02;-11,2&#10;…&#10;или «дата время, T» — почасово"></textarea><div class="row2"><label class="btn" for="csv-file">Загрузить файл</label><input type="file" id="csv-file" accept=".csv,.txt,.tsv" hidden><button class="btn" type="button" id="csv-ex">Пример: оттепель в январе</button></div><div class="csv-status" id="csv-status">Строки «дата; температура» (сутки или часы). Суточные ряды дополняются суточным ходом.</div>`;
+  }
+  return '';
+}
+function buildControls(){
+  const host=$('#controls');
+  for(const g of GROUPS){const d=document.createElement('details');d.className='grp';d.id=g.id;d.open=g.open;d.innerHTML=`<summary><span>${g.t}</span><span class="grp-sub" id="${g.id}-sub"></span></summary><div class="grp-body"></div>`;host.appendChild(d);}
+  for(const c of CTL){const w=document.createElement('div');w.className='ctl';w.dataset.id=c.id;w.innerHTML=ctlHTML(c);$('#'+c.g+' .grp-body').appendChild(w);}
+  const pr=$('#presets');
+  PRESETS.forEach((x,k)=>{const b=document.createElement('button');b.type='button';b.className='preset';b.setAttribute('aria-pressed',k===0);b.innerHTML=`<b>${x.n}</b><span>${x.d}</span>`;b.onclick=()=>applyPreset(k);pr.appendChild(b);});
+}
+function setVal(id,v){
+  const c=CTLMAP[id],el=$('#'+id);if(!el)return;
+  if(c.type==='check')el.checked=!!v;else el.value=v;
+  if(c.type==='seg')document.querySelectorAll(`[data-id="${id}"] .seg button`).forEach(b=>b.setAttribute('aria-checked',b.dataset.v===String(v)));
+  updOut(id);
+}
+function updOut(id){const c=CTLMAP[id];if(c&&c.type==='range'){const o=$('#'+id+'-o');if(o)o.textContent=fmtCtl(c,$('#'+id).value);}}
+function readParams(){
+  const p={};
+  for(const c of CTL){const el=$('#'+c.id);if(!el||c.type==='csv')continue;
+    if(c.type==='range'||c.type==='seed')p[c.id]=+el.value;else if(c.type==='check')p[c.id]=el.checked;else p[c.id]=el.value;}
+  p.dur=+p.dur;p.water=+p.water;p.iceReg=+p.iceReg;p.nfib=+p.nfib;p.csvData=CSVDATA;
+  return p;
+}
+function fillRegion(k){const r=REGIONS[k];for(const f of ['tm','aa','ad','sn','wind','thunder','sigma'])setVal(f,r[f]);setVal('iceReg',String(r.iceReg));}
+function fillInstall(k){const i=INSTALL[k];setVal('cable',i.cable);if(i.depth)setVal('depth',i.depth);if(i.span)setVal('span',i.span);}
+function fillProfile(k){const pr=PROFILES[k];if(!pr.mu)return;for(const f of QKD_IDS)setVal(f,pr[f]);}
+function applyPreset(k){
+  S.preset=k;
+  document.querySelectorAll('.preset').forEach((b,j)=>b.setAttribute('aria-pressed',j===k));
+  for(const c of CTL)if(c.v!==undefined)setVal(c.id,c.v);
+  const ps=PRESETS[k].set;
+  setVal('region',ps.region);fillRegion(ps.region);
+  setVal('install',ps.install);fillInstall(ps.install);
+  setVal('fiber',ps.fiber);setVal('alpha',FIBERS[ps.fiber].a);
+  setVal('profile','B');fillProfile('B');
+  for(const [key,v] of Object.entries(ps))if(!['region','install','fiber'].includes(key))setVal(key,v);
+  recompute();
+}
+function refreshVisibility(p){
+  for(const c of CTL)if(c.show){const w=document.querySelector(`.ctl[data-id="${c.id}"]`);if(w)w.hidden=!c.show(p);}
+  const ed=$('#extDay');if(ed){ed.max=Math.max(1,p.dur-1);updOut('extDay');}
+  $('#g-time-sub').textContent=p.mode==='csv'&&CSVDATA?'по данным ряда':(CTLMAP.dur.o.find(o=>+o[0]===p.dur)||['',''])[1];
+  $('#g-clim-sub').textContent=REGIONS[p.region].n;
+  $('#g-temp-sub').textContent=CTLMAP.mode.o.find(o=>o[0]===p.mode)[1];
+  $('#g-route-sub').textContent=INSTALL[p.install].s+', '+p.L+' км';
+  $('#g-cable-sub').textContent=CABLES[p.cable].s+' · '+FIBERS[p.fiber].n;
+  $('#g-qkd-sub').textContent=p.profile==='C'?'пользовательский':'профиль '+p.profile;
+}
+function wireControls(){
+  const side=$('#controls');
+  const onChange=e=>{
+    const id=e.target.id;if(!id||!CTLMAP[id])return;
+    updOut(id);
+    if(id==='region')fillRegion(e.target.value);
+    if(id==='install')fillInstall(e.target.value);
+    if(id==='fiber')setVal('alpha',FIBERS[e.target.value].a);
+    if(id==='profile')fillProfile(e.target.value);
+    if(QKD_IDS.includes(id))setVal('profile','C');
+    document.querySelectorAll('.preset').forEach(b=>b.setAttribute('aria-pressed','false'));
+    schedule();
+  };
+  side.addEventListener('input',onChange);side.addEventListener('change',e=>{if(e.target.tagName==='SELECT'||e.target.type==='date'||e.target.type==='checkbox'||e.target.type==='number')onChange(e);});
+  side.addEventListener('click',e=>{
+    const b=e.target.closest('.seg button');if(b){const id=b.closest('.ctl').dataset.id;setVal(id,b.dataset.v);schedule();}
+    if(e.target.id==='seed-btn'){setVal('seed',1+Math.floor(Math.random()*99998));schedule();}
+    if(e.target.id==='csv-ex'){$('#csv').value=exampleCSV();parseCSVInput();}
+  });
+  side.addEventListener('input',e=>{if(e.target.id==='csv')parseCSVInput();});
+  side.addEventListener('change',e=>{if(e.target.id==='csv-file'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>{$('#csv').value=fr.result;parseCSVInput();};fr.readAsText(e.target.files[0]);}});
+}
+let tmr=null;function schedule(){clearTimeout(tmr);tmr=setTimeout(recompute,140);}
+
+/* ---------- CSV ---------- */
+function exampleCSV(){
+  const r=mulberry32(11),out=[];let x=0;
+  for(let d=0;d<90;d++){
+    const ms=Date.UTC(2026,11,1)+d*864e5,dt=new Date(ms);x=0.75*x+2.8*gauss(r);
+    let T=-7-6*Math.sin(Math.PI*d/90)+x;if(d>=38&&d<=44)T+=12;
+    out.push(dt.toISOString().slice(0,10)+';'+T.toFixed(1).replace('.',','));
+  }
+  return out.join('\n');
+}
+function parseCSVInput(){
+  const txt=$('#csv').value,st=$('#csv-status'),pts=[];
+  for(const raw of txt.split(/\r?\n/)){
+    const line=raw.trim();if(!line||/^[a-zа-я#]/i.test(line))continue;
+    let parts;
+    if(line.includes(';'))parts=line.split(';');else if(line.includes('\t'))parts=line.split('\t');
+    else if(/^\d{4}-\d{2}-\d{2}[^,]*,/.test(line))parts=line.split(',');else parts=line.split(/\s+/);
+    parts=parts.map(s=>s.trim()).filter(Boolean);if(!parts.length)continue;
+    const T=parseFloat(parts[parts.length-1].replace(',','.').replace('−','-'));if(!isFinite(T))continue;
+    const head=parts.slice(0,-1).join(' ');let t=null;
+    let m=/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(head);
+    if(m)t=Date.UTC(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0));
+    else if((m=/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(head)))t=Date.UTC(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0));
+    pts.push({t,T});
+  }
+  if(pts.length<2){CSVDATA=null;st.textContent='Не найдено хотя бы двух строк «дата; температура».';schedule();return;}
+  const dated=pts.every(x=>x.t!=null);
+  if(!dated)pts.forEach((x,k)=>x.t=Date.UTC(2026,0,1)+k*864e5);
+  pts.sort((a,b)=>a.t-b.t);
+  const t0=pts[0].t,t1=pts[pts.length-1].t,hours=Math.min(24*1830,Math.floor((t1-t0)/3600e3)+1);
+  const steps=[];for(let k=1;k<pts.length;k++)steps.push(pts[k].t-pts[k-1].t);steps.sort((a,b)=>a-b);
+  const med=steps[Math.floor(steps.length/2)]/3600e3;
+  const T=new Float32Array(hours);let k=0;
+  for(let h=0;h<hours;h++){const t=t0+h*3600e3;while(k<pts.length-2&&pts[k+1].t<t)k++;const a=pts[k],b=pts[k+1],f=b.t>a.t?clamp((t-a.t)/(b.t-a.t),0,1):0;T[h]=a.T+(b.T-a.T)*f;}
+  CSVDATA={t0,T,coarse:med>=12};
+  st.textContent=`Загружено ${pts.length} точек · ${fdate(t0)} — ${fdate(t1)} · шаг ≈ ${nf(med,med<1?1:0)} ч${dated?'':' (дата не указана — старт 1 янв 2026, шаг 1 сут)'}`;
+  schedule();
+}
+
+/* ---------- основной расчёт ---------- */
+function recompute(){
+  const p=readParams();S.p=p;refreshVisibility(p);
+  const E=simulateEnv(p);S.E=E;
+  const R=runOptics(E,p);S.R=R;S.O=R.O;
+  S.AG=aggregate(E,R.O);
+  S.ev=findEvents(E,R.O,p,R);
+  S.Lmax=findLmax(E,p);
+  S.tauReq=null;
+  if(R.maxQ>p.thr/100){const q0=runOptics(E,p,{tau:0.01,quick:true});if(q0.maxQ<R.maxQ-0.002)S.tauReq=findTauReq(E,p);}
+  const cur=$('#cursor');cur.max=S.AG.nb-1;
+  let ci=S.AG.nb-1;const fe=S.ev.ev.find(e=>e.sev==='crit');
+  if(fe)ci=Math.floor(fe.i/E.bh);else{let mx=-1;for(let b=0;b<S.AG.nb;b++)if(S.AG.A[b]>mx){mx=S.AG.A[b];ci=b;}}
+  S.cursor=ci;cur.value=ci;
+  renderAll();
+  S.cmpInstDone=false;$('#cmp-inst-wrap').innerHTML='<p class="empty-note">Пересчитывает тепловую и механическую модель для каждого способа прокладки с его типовым кабелем при той же погоде и том же волокне.</p>';
+  setTimeout(renderFiberCmp,30);
+}
+function renderAll(){
+  renderChips();renderKPI();drawCross();renderEvents();renderPassport();drawCharts();setCursor(S.cursor);
+}
+
+/* ---------- шапка и KPI ---------- */
+function verdict(){
+  const {p,R,E}=S;const thr=p.thr/100;
+  const outT=S.ev.ev.some(e=>e.t.startsWith('Кабель вне'));
+  const over=E.inst.aer&&maxOf(E.tens)>1.5,set=E.inst.ground?E.settle[E.N-1]:0;
+  if(R.avail<0.999||outT||over||set>0.1)return {c:'bad',t:'Требует изменения проекта'};
+  if(set>0.02||R.maxD>0.5*p.reserve||R.minMargin<0||R.maxQ>thr*0.8||(E.inst.aer&&maxOf(E.tens)>1)||S.Lmax<p.L)return {c:'warn',t:'Работоспособен с ограничениями'};
+  return {c:'ok',t:'Соответствует условиям'};
+}
+function maxOf(a){let m=-Infinity;for(let i=0;i<a.length;i++)if(a[i]>m)m=a[i];return m;}
+function minOf(a){let m=Infinity;for(let i=0;i<a.length;i++)if(a[i]<m)m=a[i];return m;}
+function renderChips(){
+  const p=S.p,E=S.E;
+  const period=fdate(E.W.t0)+' — '+fdate(E.W.t0+(E.N-1)*3600e3);
+  const items=[REGIONS[p.region].n,period,INSTALL[p.install].n+(E.inst.ground?', '+nf(p.depth,2)+' м, '+SOILS[p.soil].n.toLowerCase():'')+(E.inst.aer?', пролёт '+p.span+' м':''),CABLES[p.cable].s+' · '+FIBERS[p.fiber].n+' · '+p.L+' км',p.profile==='C'?'Пользовательский терминал':'Терминал: профиль '+p.profile];
+  $('#chips').innerHTML=items.map(t=>`<span class="chip">${esc(t)}</span>`).join('');
+}
+function renderKPI(){
+  const {p,R,E}=S,v=verdict(),thr=p.thr/100;
+  const qTone=R.maxQ>thr?'bad':R.maxQ>0.8*thr?'warn':'ok';
+  const aTone=R.avail<0.999?'bad':R.avail<1?'warn':'ok';
+  const mTone=R.minMargin<-p.reserve?'bad':R.minMargin<0?'warn':'ok';
+  const lTone=S.Lmax<p.L?'bad':S.Lmax<p.L*1.1?'warn':'ok';
+  const crit=S.ev.ev.filter(e=>e.sev==='crit').length;
+  const hrsBad=Math.round((1-R.avail)*E.N);
+  $('#kpis').innerHTML=`
+  <div class="kpi verdict"><div class="k">Итог по сегменту</div><div class="v"><span class="pill ${v.c}">${v.t}</span></div><div class="s">${FIBERS[p.fiber].n}, ${p.L} км, ${INSTALL[p.install].s}</div></div>
+  <div class="kpi"><div class="k">Макс. QBER</div><div class="v tone-${qTone}">${nf(R.maxQ*100,2)}<small>%</small></div><div class="s">порог ${nf(p.thr,1)} %</div></div>
+  <div class="kpi"><div class="k">Доступность канала</div><div class="v tone-${aTone}">${nf(R.avail*100,R.avail>0.999&&R.avail<1?3:2)}<small>%</small></div><div class="s">${hrsBad?'вне нормы '+fmtDur(hrsBad):'без выхода за пороги'}</div></div>
+  <div class="kpi"><div class="k">Мин. остаток бюджета</div><div class="v tone-${mTone}">${nf(R.minMargin,2)}<small>дБ</small></div><div class="s">после запаса ${nf(p.reserve,1)} дБ</div></div>
+  <div class="kpi"><div class="k">Макс. длина плеча</div><div class="v tone-${lTone}">${S.Lmax>=300?'> 300':nf(S.Lmax,0)}<small>км</small></div><div class="s">при этих условиях</div></div>
+  <div class="kpi"><div class="k">Критических эпизодов</div><div class="v ${crit?'tone-bad':'tone-ok'}">${crit}</div><div class="s">${S.ev.ev.length} событий всего</div></div>`;
+}
+
+/* ---------- графики ---------- */
+function niceTicks(a,b,n){const span=b-a;if(!(span>0))return [a];const s0=span/Math.max(1,n),mag=Math.pow(10,Math.floor(Math.log10(s0))),r=s0/mag;const st=(r<1.5?1:r<3?2:r<7?5:10)*mag;const t=[];for(let v=Math.ceil(a/st-1e-9)*st;v<=b+1e-9;v+=st)t.push(Math.abs(v)<st*1e-6?0:v);return t;}
+function timeTicks(t0,t1,width){
+  const days=(t1-t0)/864e5,maxT=Math.max(3,Math.floor(width/74)),out=[];
+  if(days<=3){const hs=[3,6,12].find(h=>days*24/h<=maxT)||24;for(let t=Math.ceil(t0/(hs*3600e3))*hs*3600e3;t<=t1;t+=hs*3600e3){const d=new Date(t);out.push({t,l:d.getUTCHours()===0?d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]:String(d.getUTCHours()).padStart(2,'0')+':00'});}return out;}
+  if(days<=75){const ks=[1,2,5,7,10,15].find(k=>days/k<=maxT)||15;for(let t=Math.ceil(t0/864e5)*864e5;t<=t1;t+=864e5){const d=new Date(t);const dn=Math.round(t/864e5);if(dn%ks===0)out.push({t,l:d.getUTCDate()+' '+MONTHS[d.getUTCMonth()]});}return out;}
+  const ms=[1,2,3,6,12].find(k=>days/30.4/k<=maxT)||12;const d0=new Date(t0);let y=d0.getUTCFullYear(),m=d0.getUTCMonth()+1;if(m>11){m=0;y++;}
+  let first=true;
+  for(;;){const t=Date.UTC(y,m,1);if(t>t1)break;if(m%ms===0){out.push({t,l:(m===0||first?MONTHS[m]+' '+y:MONTHS[m])});first=false;}m++;if(m>11){m=0;y++;}}
+  return out;
+}
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function drawChart(id,s){
+  const host=$('#'+id);if(!host)return;
+  const W=Math.max(280,Math.floor(host.clientWidth)),H=s.h||170,m={l:48,r:14,t:10,b:24},pw=W-m.l-m.r,ph=H-m.t-m.b;
+  const n=s.n,x0=S.AG.t[0],x1=S.AG.t[n-1]+S.AG.bh*3600e3;
+  const X=i=>m.l+(n>1?i/(n-1):0.5)*pw;
+  const Y=v=>s.inv?m.t+(v-s.y0)/(s.y1-s.y0)*ph:m.t+ph-(v-s.y0)/(s.y1-s.y0)*ph;
+  const Xt=t=>m.l+(t-x0)/(x1-x0)*pw;
+  let g='';
+  const yt=niceTicks(s.y0,s.y1,Math.max(2,Math.round(ph/38)));
+  for(const v of yt){const y=Y(v);if(y<m.t-0.5||y>m.t+ph+0.5)continue;g+=`<line class="grid" x1="${m.l}" x2="${W-m.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text class="tick" x="${m.l-6}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${s.yfmt?s.yfmt(v):nf(v,decimals(+v.toPrecision(6))>2?2:decimals(+v.toPrecision(6)))}</text>`;}
+  for(const tk of timeTicks(x0,x1,pw)){const x=Xt(tk.t);if(x<m.l-1||x>W-m.r+1)continue;g+=`<line class="axis" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${m.t+ph}" y2="${m.t+ph+4}"/><text class="tick" x="${x.toFixed(1)}" y="${H-6}" text-anchor="middle">${tk.l}</text>`;}
+  g+=`<line class="axis" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ph}" y2="${m.t+ph}"/>`;
+  if(s.image)g+=`<image href="${s.image}" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" preserveAspectRatio="none" style="image-rendering:auto"/>`;
+  for(const sh of s.shade||[]){const a=X(Math.max(0,sh[0]-0.5)),b=X(Math.min(n-1,sh[1]+0.5));g+=`<rect x="${a.toFixed(1)}" y="${m.t}" width="${Math.max(2,b-a).toFixed(1)}" height="${ph}" fill="var(--crit-soft)"/>`;}
+  const path=(arr,off)=>{let d='',pen=false;for(let i=0;i<n;i++){const v=arr[i]+(off?off[i]:0);if(!isFinite(v)){pen=false;continue;}d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(clamp(v,Math.min(s.y0,s.y1),Math.max(s.y0,s.y1))).toFixed(1);pen=true;}return d;};
+  for(const b of s.bands||[]){let d='M'+X(0).toFixed(1)+' '+Y(b.hi[0]).toFixed(1);for(let i=1;i<n;i++)d+='L'+X(i).toFixed(1)+' '+Y(b.hi[i]).toFixed(1);for(let i=n-1;i>=0;i--)d+='L'+X(i).toFixed(1)+' '+Y(b.lo[i]).toFixed(1);g+=`<path d="${d}Z" fill="${b.fill}"/>`;}
+  if(s.stack){
+    const acc=new Float32Array(n);
+    for(const st of s.stack){
+      let d='M'+X(0).toFixed(1)+' '+Y(acc[0]+st.y[0]).toFixed(1);
+      for(let i=1;i<n;i++)d+='L'+X(i).toFixed(1)+' '+Y(acc[i]+st.y[i]).toFixed(1);
+      for(let i=n-1;i>=0;i--)d+='L'+X(i).toFixed(1)+' '+Y(acc[i]).toFixed(1);
+      g+=`<path d="${d}Z" fill="${st.color}" stroke="var(--surface)" stroke-width="1" stroke-linejoin="round"/>`;
+      for(let i=0;i<n;i++)acc[i]+=st.y[i];
+    }
+  }
+  for(const hl of s.hlines||[]){if(hl.y<Math.min(s.y0,s.y1)||hl.y>Math.max(s.y0,s.y1))continue;const y=Y(hl.y).toFixed(1);g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y}" y2="${y}" stroke="${hl.color}" stroke-width="1.2" ${hl.dash?'stroke-dasharray="5 4"':''}/>`;if(hl.label)g+=`<text class="hl-label" x="${W-m.r-4}" y="${(+y-4).toFixed(1)}" text-anchor="end" fill="${hl.color}">${hl.label}</text>`;}
+  for(const ln of s.lines||[])g+=`<path d="${path(ln.y)}" fill="none" stroke="${ln.color}" stroke-width="${ln.w||2}" stroke-linejoin="round" stroke-linecap="round" ${ln.dash?'stroke-dasharray="'+ln.dash+'"':''}/>`;
+  const dots=(s.lines||[]).filter(l=>!l.nodot).map((l,k)=>`<circle data-k="${k}" r="4" fill="${l.color}" stroke="var(--surface)" stroke-width="2"/>`).join('');
+  g+=`<g class="xh"><line class="cur" y1="${m.t}" y2="${m.t+ph}"/>${dots}</g>`;
+  g+=`<rect class="ov" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent" style="cursor:crosshair"/>`;
+  host.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(s.aria||'')}">${g}</svg>`;
+  s.X=X;s.Y=Y;s.m=m;s.pw=pw;s.W=W;s.host=host;S.charts[id]=s;
+  const ov=host.querySelector('.ov');
+  const idx=e=>{const r=host.querySelector('svg').getBoundingClientRect();const x=(e.clientX-r.left)*(W/r.width);return clamp(Math.round((x-m.l)/pw*(n-1)),0,n-1);};
+  ov.addEventListener('pointermove',e=>{S.hover={id,i:idx(e)};setCursor(S.hover.i,e);});
+  ov.addEventListener('pointerdown',e=>{const i=idx(e);S.cursor=i;$('#cursor').value=i;});
+  ov.addEventListener('pointerleave',()=>{S.hover=null;hideTips();setCursor(S.cursor);});
+}
+function hideTips(){document.querySelectorAll('.tip').forEach(t=>t.style.display='none');}
+function legend(id,items){$('#'+id).innerHTML=items.map(it=>`<span><i class="${it.cls||''}" style="background:${it.color}"></i>${it.l}</span>`).join('');}
+function drawCharts(){
+  const AG=S.AG,p=S.p,E=S.E,n=AG.nb,thr=p.thr;
+  const tipDate=i=>{const t=AG.t[i];return AG.bh===1?fdate(t,true):AG.bh===24?fdate(t):fdate(t,true)+' +'+AG.bh+' ч';};
+  /* температура */
+  let lo=Infinity,hi=-Infinity;for(let i=0;i<n;i++){lo=Math.min(lo,AG.taMin[i],AG.tc[i]);hi=Math.max(hi,AG.taMax[i],AG.tc[i]);}
+  const pad=(hi-lo)*0.08+1;
+  legend('lg-temp',[{l:'Воздух: среднее',color:'var(--s-air)'},{l:'суточный размах',color:'var(--s-air-band)',cls:'band'},{l:'Кабель'+(E.inst.ground?' на глубине '+nf(p.depth,2)+' м':''),color:'var(--s-cable)'}]);
+  drawChart('ch-temp',{n,h:180,y0:lo-pad,y1:hi+pad,aria:'Температура воздуха и кабеля',
+    bands:[{lo:AG.taMin,hi:AG.taMax,fill:'var(--s-air-band)'}],
+    lines:[{y:AG.tc,color:'var(--s-cable)',w:E.inst.aer?1.5:2.2},{y:AG.ta,color:'var(--s-air)',w:1.2}],
+    hlines:[{y:0,color:'var(--ink-2)',dash:true,label:'0 °C'}],yfmt:v=>nf(v,0)+'°',
+    tip:i=>({d:tipDate(i),rows:[['Воздух, среднее',nf(AG.ta[i],1)+' °C','var(--s-air)'],['Воздух, мин…макс',nf(AG.taMin[i],1)+'…'+nf(AG.taMax[i],1)+' °C'],['Кабель',nf(AG.tc[i],1)+' °C','var(--s-cable)'],...(AG.snow[i]>1?[['Снег',nf(AG.snow[i],0)+' см']]:[])]})});
+  /* среда */
+  const ce=$('#card-env');ce.hidden=!!E.inst.tunnel;
+  if(E.inst.ground){
+    $('#env-title').textContent='Температура грунта по глубине';
+    const nz=E.nzs,cv=document.createElement('canvas');cv.width=n;cv.height=nz;const cx=cv.getContext('2d'),img=cx.createImageData(n,nz);
+    const cc=hexRGB(cssv('--div-cold')),cm=hexRGB(cssv('--div-mid')),cw=hexRGB(cssv('--div-warm'));
+    for(let b=0;b<n;b++)for(let j=0;j<nz;j++){const c=divRGB(E.prof[b*nz+j],cc,cm,cw),o=(j*n+b)*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=255;}
+    cx.putImageData(img,0,0);
+    const zfL=new Float32Array(n);for(let b=0;b<n;b++)zfL[b]=AG.zf[b]>0.05?Math.min(AG.zf[b],E.zmax):NaN;
+    const ztL=new Float32Array(n);for(let b=0;b<n;b++)ztL[b]=AG.zt[b]>0.05&&AG.zt[b]<E.zmax?AG.zt[b]:NaN;
+    const depthL=new Float32Array(n).fill(p.depth);
+    const lines=[{y:depthL,color:'var(--ink)',w:1.6,dash:'6 4',nodot:true},{y:zfL,color:'var(--ink)',w:1.4}];
+    if(E.soil.ice>0)lines.push({y:ztL,color:'var(--s-cable)',w:1.4});
+    $('#lg-env').innerHTML=`<span class="gradlegend">−15 °C<span class="bar" style="background:linear-gradient(90deg,${cssv('--div-cold')},${cssv('--div-mid')},${cssv('--div-warm')})"></span>+15 °C</span><span><i style="background:var(--ink)"></i>фронт промерзания</span>${E.soil.ice>0?'<span><i style="background:var(--s-cable)"></i>подошва протаивания</span>':''}<span><i style="background:repeating-linear-gradient(90deg,var(--ink) 0 5px,transparent 5px 8px)"></i>кабель</span>`;
+    drawChart('ch-env',{n,h:190,y0:0,y1:E.zmax,inv:true,image:cv.toDataURL(),aria:'Температура грунта по глубине',lines,yfmt:v=>nf(v,1)+' м',
+      tip:i=>{const nz2=E.nzs,jc=Math.round(p.depth/E.dz);return {d:tipDate(i),rows:[['T на глубине кабеля',nf(E.prof[i*nz2+Math.min(nz2-1,jc)],1)+' °C'],['Промерзание',AG.zf[i]>0.05?(AG.zf[i]>=E.zmax?'> '+nf(E.zmax,1):nf(AG.zf[i],2))+' м':'нет'],...(E.soil.ice>0?[['Протаивание',isFinite(AG.zt[i])?nf(AG.zt[i],2)+' м':'—']]:[]),['Снег',nf(AG.snow[i],0)+' см']]};}});
+  }else if(E.inst.aer){
+    $('#env-title').textContent='Нагрузка на подвес от гололёда и ветра';
+    const tp=new Float32Array(n);for(let i=0;i<n;i++)tp[i]=AG.tens[i]*100;
+    const mx=Math.max(120,maxOf(tp)*1.1);
+    legend('lg-env',[{l:'Натяжение, % от расчётного',color:'var(--c1)'}]);
+    drawChart('ch-env',{n,h:170,y0:0,y1:mx,aria:'Натяжение подвеса',lines:[{y:tp,color:'var(--c1)',w:1.8}],
+      hlines:[{y:100,color:'var(--warn)',dash:true,label:'расчётный режим'},{y:150,color:'var(--crit)',dash:true,label:'перегрузка'}],yfmt:v=>nf(v,0)+'%',
+      tip:i=>({d:tipDate(i),rows:[['Натяжение',nf(tp[i],0)+' %','var(--c1)'],['Гололёд',nf(AG.ice[i],1)+' мм'],['Ветер / порывы',nf(AG.wind[i],1)+' / '+nf(AG.gust[i],1)+' м/с']]})});
+  }
+  /* затухание */
+  let aLo=Infinity,aHi=-Infinity;for(let i=0;i<n;i++){aLo=Math.min(aLo,AG.A[i]);aHi=Math.max(aHi,AG.A[i]);}
+  const ay0=Math.max(0,Math.min(aLo-0.6,p.amax-p.reserve-1.5)),ay1=Math.max(aHi+0.4,p.amax+0.8);
+  legend('lg-att',[{l:'Суммарные потери (макс. за интервал)',color:'var(--c1)'}]);
+  drawChart('ch-att',{n,h:170,y0:ay0,y1:ay1,aria:'Затухание плеча',lines:[{y:AG.A,color:'var(--c1)',w:2}],shade:S.ev.sh.map(([a,b])=>[Math.floor(a/AG.bh),Math.floor(b/AG.bh)]),
+    hlines:[{y:p.amax,color:'var(--crit)',label:'предел терминала '+nf(p.amax,1)+' дБ'},{y:p.amax-p.reserve,color:'var(--warn)',dash:true,label:'с запасом '+nf(p.reserve,1)+' дБ'}],
+    tip:i=>({d:tipDate(i),rows:[['Потери плеча',nf(AG.A[i],2)+' дБ','var(--c1)'],['Базовые',nf(S.R.base,2)+' дБ'],['Остаток бюджета',nf(p.amax-p.reserve-AG.A[i],2)+' дБ']]})});
+  /* добавочные */
+  const comps=[];const cols=['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
+  for(let k=0;k<5;k++)if(maxOf(AG.c[k])>1e-3)comps.push({k,y:AG.c[k],color:cols[k]});
+  let dmax=0;for(let i=0;i<n;i++){let s=0;for(const c of comps)s+=c.y[i];dmax=Math.max(dmax,s);}
+  if(comps.length){legend('lg-dA',comps.map(c=>({l:COMP_NAMES[c.k],color:c.color,cls:'sq'})));}
+  else $('#lg-dA').innerHTML='<span class="empty-note">Воздействия не дают заметных добавочных потерь</span>';
+  drawChart('ch-dA',{n,h:160,y0:0,y1:Math.max(0.1,dmax*1.15),aria:'Добавочные потери',stack:comps,lines:[],
+    tip:i=>({d:tipDate(i),rows:comps.length?comps.map(c=>[COMP_NAMES[c.k],nf(c.y[i],3)+' дБ',c.color]):[['Добавочные потери','0 дБ']]})});
+  /* QBER */
+  const qp=new Float32Array(n);let qmx=0;for(let i=0;i<n;i++){qp[i]=AG.Q[i]*100;qmx=Math.max(qmx,qp[i]);}
+  const qy1=Math.max(thr*1.35,qmx*1.1);
+  legend('lg-q',[{l:'QBER (макс. за интервал)',color:'var(--s-q)'}]);
+  drawChart('ch-q',{n,h:180,y0:0,y1:qy1,aria:'QBER',lines:[{y:qp,color:'var(--s-q)',w:2}],shade:S.ev.sh.map(([a,b])=>[Math.floor(a/AG.bh),Math.floor(b/AG.bh)]),
+    hlines:[{y:thr,color:'var(--crit)',label:'порог штатной работы '+nf(thr,1)+' %'},{y:thr*0.8,color:'var(--warn)',dash:true,label:'зона внимания'},{y:11,color:'var(--muted)',dash:true,label:'≈ 11 % — предел BB84'}],yfmt:v=>nf(v,v<10?1:0)+'%',
+    tip:i=>({d:tipDate(i),rows:[['QBER',nf(qp[i],2)+' %','var(--s-q)'],['Ошибка подстройки',nf(AG.ed[i]*100,3)+' %'],['Потери',nf(AG.A[i],2)+' дБ']]})});
+  /* ключ */
+  let rmx=0;for(let i=0;i<n;i++)rmx=Math.max(rmx,AG.R[i]);
+  legend('lg-r',[{l:'Скорость ключа (мин. за интервал), нормирована на ориентир при 10 дБ',color:'var(--s-key)'}]);
+  drawChart('ch-r',{n,h:150,y0:0,y1:Math.max(10,rmx*1.12),aria:'Скорость ключа',lines:[{y:AG.R,color:'var(--s-key)',w:2}],yfmt:v=>nf(v,0),
+    tip:i=>({d:tipDate(i),rows:[['Скорость ключа',nf(AG.R[i],0)+' бит/с','var(--s-key)'],['Регистрации',nf(p.freq*1e6*(p.mu*Math.pow(10,-AG.A[i]/10)*p.eta/100+S.R.B)/1000,1)+' тыс./с']]})});
+}
+function hexRGB(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function mixRGB(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t].map(Math.round);}
+function divRGB(T,cc,cm,cw){const t=clamp(T/15,-1,1);return t<0?mixRGB(cm,cc,Math.pow(-t,0.8)):mixRGB(cm,cw,0.85*t);}
+function divHex(T){const c=divRGB(T,hexRGB(cssv('--div-cold')),hexRGB(cssv('--div-mid')),hexRGB(cssv('--div-warm')));return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join('');}
+
+function setCursor(i,ev){
+  i=clamp(i|0,0,S.AG.nb-1);
+  for(const [id,s] of Object.entries(S.charts)){
+    if(!s.host||!s.host.isConnected)continue;
+    const g=s.host.querySelector('.xh');if(!g)continue;
+    const x=s.X(i);const ln=g.querySelector('line');ln.setAttribute('x1',x);ln.setAttribute('x2',x);
+    g.querySelectorAll('circle').forEach(c=>{const l=(s.lines||[]).filter(l=>!l.nodot)[+c.dataset.k];const v=l.y[i];if(isFinite(v)){c.style.display='';c.setAttribute('cx',x);c.setAttribute('cy',s.Y(clamp(v,Math.min(s.y0,s.y1),Math.max(s.y0,s.y1))));}else c.style.display='none';});
+    const tip=s.host.parentElement.querySelector('.tip');
+    if(S.hover&&S.hover.id===id&&s.tip){
+      const t=s.tip(i);tip.innerHTML=`<div class="td">${t.d}</div>`+t.rows.map(r=>`<div class="tr"><span>${r[2]?`<span class="sw" style="background:${r[2]}"></span>`:''}${r[0]}</span><b>${r[1]}</b></div>`).join('');
+      tip.style.display='block';
+      const cw=s.host.parentElement.clientWidth,tw=tip.offsetWidth,hx=x*(s.host.clientWidth/s.W)+16;
+      tip.style.left=(hx+tw+20>cw?hx-tw-24:hx+8)+'px';tip.style.top=(s.host.offsetTop+8)+'px';
+    }else if(tip)tip.style.display='none';
+  }
+  $('#tl-date').textContent=S.AG.bh===24?fdate(S.AG.t[i]):fdate(S.AG.t[i],true);
+  if(!S.raf){S.raf=requestAnimationFrame(()=>{S.raf=0;drawScene(S.sceneI);renderReadout(S.sceneI);});}
+  S.sceneI=i;
+}
+
+/* ---------- сцена ---------- */
+const svgT=(x,y,t,o={})=>`<text x="${x}" y="${y}" ${o.a?`text-anchor="${o.a}"`:''} font-size="${o.s||12}" font-weight="${o.w||500}" fill="${o.f||'var(--ink)'}" style="paint-order:stroke;stroke:${o.st||'var(--surface)'};stroke-width:${o.sw!=null?o.sw:3.5}px;stroke-linejoin:round;font-family:var(--f-body)">${t}</text>`;
+function soilPattern(k){
+  switch(k){
+    case 'sand':return `<pattern id="pt" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r="0.9" fill="#000" opacity=".35"/><circle cx="7" cy="7" r="0.8" fill="#000" opacity=".3"/><circle cx="8" cy="2" r="0.6" fill="#000" opacity=".3"/></pattern>`;
+    case 'clay':return `<pattern id="pt" width="16" height="8" patternUnits="userSpaceOnUse"><path d="M1 4h9" stroke="#000" stroke-width=".8" opacity=".3"/></pattern>`;
+    case 'peat':return `<pattern id="pt" width="14" height="10" patternUnits="userSpaceOnUse"><path d="M1 8q3-5 6-1M8 4q3-3 5 1" fill="none" stroke="#000" stroke-width=".8" opacity=".3"/></pattern>`;
+    case 'rock':return `<pattern id="pt" width="26" height="16" patternUnits="userSpaceOnUse"><path d="M0 8h26M13 0v8M5 8v8M19 8v8" stroke="#000" stroke-width=".8" opacity=".25"/></pattern>`;
+    default:return `<pattern id="pt" width="14" height="10" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="0.8" fill="#000" opacity=".3"/><path d="M7 7h5" stroke="#000" stroke-width=".8" opacity=".28"/></pattern>`;
+  }
+}
+function drawScene(i){
+  const E=S.E,p=S.p,AG=S.AG;if(!E)return;
+  const W=640,H=330;let s='';
+  const Ta=AG.ta[i],Tc=AG.tc[i];
+  if(E.inst.ground){
+    $('#scene-title').textContent='Разрез трассы: грунт и кабель';
+    const gy=92,zmax=E.zmax,sc=(H-12-gy)/zmax,nz=E.nzs,dz=E.dz,Y=z=>gy+z*sc;
+    let stops='';for(let j=0;j<nz;j++)stops+=`<stop offset="${(j/(nz-1)).toFixed(3)}" stop-color="${divHex(E.prof[i*nz+j])}"/>`;
+    s+=`<defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>${soilPattern(E.soil.pat)}<pattern id="icep" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M6 2v8M2 6h8M3.2 3.2l5.6 5.6M8.8 3.2l-5.6 5.6" stroke="#fff" stroke-width=".9" opacity=".55"/></pattern></defs>`;
+    s+=`<rect x="0" y="0" width="${W}" height="${gy}" fill="var(--sky)"/>`;
+    const hs=Math.min(40,AG.snow[i]*0.6);
+    s+=`<rect x="0" y="${gy}" width="${W}" height="${H-gy}" fill="url(#gg)"/><rect x="0" y="${gy}" width="${W}" height="${H-gy}" fill="url(#pt)"/>`;
+    // мёрзлые участки
+    let run=-1;
+    for(let j=0;j<=nz;j++){const fz=j<nz&&E.prof[i*nz+j]<-0.5;if(fz&&run<0)run=j;if(!fz&&run>=0){const a=Math.max(gy,Y((run-0.5)*dz)),b=Y(Math.min(zmax,(j-0.5)*dz));s+=`<rect x="0" y="${a.toFixed(1)}" width="${W}" height="${Math.max(0,b-a).toFixed(1)}" fill="url(#icep)"/>`;run=-1;}}
+    // ж/д
+    if(p.rail>0){s+=`<path d="M60 ${gy} L80 ${gy-12} L210 ${gy-12} L230 ${gy}Z" fill="#8f949b" opacity=".85"/><rect x="88" y="${gy-17}" width="114" height="5" rx="1" fill="#6b5446"/><rect x="104" y="${gy-24}" width="7" height="7" fill="#50565e"/><rect x="179" y="${gy-24}" width="7" height="7" fill="#50565e"/>`+svgT(145,gy-30,'ж/д путь',{a:'middle',s:11,f:'var(--ink-2)'});}
+    if(hs>0.6)s+=`<rect x="0" y="${gy-hs}" width="${W}" height="${hs}" fill="var(--snow)" opacity=".92"/><line x1="0" x2="${W}" y1="${gy-hs}" y2="${gy-hs}" stroke="var(--line)"/>`;
+    s+=`<line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--ink-2)" stroke-width="1.2" opacity=".6"/>`;
+    // траншея и кабель
+    const cxp=420,zc=p.depth,yc=Y(zc),yb=Y(Math.min(zmax,zc+0.18));
+    s+=`<path d="M${cxp-58} ${gy} L${cxp-30} ${yb} L${cxp+30} ${yb} L${cxp+58} ${gy}" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="5 4" opacity=".55"/>`;
+    if(E.inst.duct){
+      const wl=p.water,iceF=AG.dice[i];
+      s+=`<defs><clipPath id="dc"><circle cx="${cxp}" cy="${yc}" r="14"/></clipPath></defs><circle cx="${cxp}" cy="${yc}" r="16" fill="var(--surface)" stroke="#39414d" stroke-width="3"/>`;
+      if(wl>0){const top=yc+14-28*Math.min(1,wl);s+=`<rect clip-path="url(#dc)" x="${cxp-16}" y="${top}" width="32" height="${yc+16-top}" fill="${iceF>0.5?'#d4ecfb':'#4a9fe0'}" opacity="${iceF>0.5?0.95:0.55}"/>`;}
+      s+=`<circle cx="${cxp}" cy="${yc+ (wl>=1?0:5)}" r="6.5" fill="var(--cable)" stroke="#fff" stroke-width="1.2"/>`;
+    }else s+=`<circle cx="${cxp}" cy="${yc}" r="8" fill="var(--cable)" stroke="#fff" stroke-width="1.5"/><circle cx="${cxp}" cy="${yc}" r="3" fill="none" stroke="#9aa5b1" stroke-width="1"/>`;
+    // фронт
+    const zf=AG.zf[i];
+    if(zf>0.05){const yf=Y(Math.min(zf,zmax));s+=`<line x1="40" x2="${W}" y1="${yf}" y2="${yf}" stroke="var(--ink)" stroke-width="1.4" stroke-dasharray="2 3"/>`+svgT(84,yf+(Math.abs(yf-yc)<18&&yf<yc?-6:15),zf>=zmax?'промерзание глубже '+nf(zmax,1)+' м':'фронт промерзания · '+nf(zf,2)+' м',{s:11.5});}
+    const zt=AG.zt[i];
+    if(E.soil.ice>0&&isFinite(zt)&&zt<zmax){const yt=Y(zt);s+=`<line x1="40" x2="${W}" y1="${yt}" y2="${yt}" stroke="var(--s-cable)" stroke-width="1.6"/>`+svgT(84,yt+15,'подошва протаивания · '+nf(zt,2)+' м',{s:11.5,f:'var(--s-cable)'});}
+    // линейка глубин
+    s+=`<line x1="30" x2="30" y1="${gy}" y2="${H-12}" stroke="var(--ink-2)" opacity=".7"/>`;
+    for(let z=0;z<=zmax+1e-6;z+=0.5){const y=Y(z);s+=`<line x1="26" x2="34" y1="${y}" y2="${y}" stroke="var(--ink-2)" opacity=".7"/>`+svgT(38,y+4,nf(z,1)+' м',{s:10.5,f:'var(--ink-2)',w:400});}
+    // подписи
+    const frozenC=AG.lf[i]<0.5;
+    s+=svgT(cxp+(E.inst.duct?24:16),yc-4,'Кабель · '+nf(zc,2)+' м',{s:12,w:600});
+    s+=svgT(cxp+(E.inst.duct?24:16),yc+12,nf(Tc,1)+' °C · грунт '+(frozenC?'мёрзлый':'талый'),{s:11.5,f:frozenC?'var(--s-ice)':'var(--ink-2)'});
+    s+=svgT(16,24,'Воздух '+nf(Ta,1)+' °C',{s:15,w:600});
+    s+=svgT(16,43,SOILS[p.soil].n+(E.inst.duct?' · труба ПНД, '+(p.water>=1?'затоплена':p.water>0?'частично с водой':'сухая'):''),{s:11.5,f:'var(--ink-2)',w:400});
+    if(hs>0.6)s+=svgT(W-12,gy-hs-6,'снег '+nf(AG.snow[i],0)+' см',{a:'end',s:11.5,f:'var(--ink-2)'});
+    if(E.inst.duct&&AG.dice[i]>0.5)s+=svgT(cxp,yc+34,'лёд в трубе',{a:'middle',s:11.5,f:'var(--s-ice)',w:600});
+  }else if(E.inst.aer){
+    $('#scene-title').textContent=E.inst.opgw?'Пролёт ЛЭП с грозотросом':'Пролёт подвесного кабеля';
+    const gy=292,x1=80,x2=560,top=E.inst.opgw?70:96;
+    s+=`<rect x="0" y="0" width="${W}" height="${gy}" fill="var(--sky)"/><rect x="0" y="${gy}" width="${W}" height="${H-gy}" fill="var(--surface-2)"/>`;
+    if(AG.snow[i]>1)s+=`<rect x="0" y="${gy-Math.min(14,AG.snow[i]*0.3)}" width="${W}" height="${Math.min(14,AG.snow[i]*0.3)}" fill="var(--snow)"/>`;
+    s+=`<line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--ink-2)" opacity=".5"/>`;
+    const tower=x=>E.inst.opgw?`<path d="M${x-26} ${gy} L${x-7} ${top+8} L${x+7} ${top+8} L${x+26} ${gy} M${x-18} ${gy-60} L${x+18} ${gy-60} M${x-12} ${gy-120} L${x+12} ${gy-120} M${x-23} ${gy-20} L${x+14} ${gy-110} M${x+23} ${gy-20} L${x-14} ${gy-110} M${x-44} ${top+54} L${x+44} ${top+54} M${x-40} ${top+54} L${x-40} ${top+66} M${x+40} ${top+54} L${x+40} ${top+66} M${x} ${top+8} L${x} ${top}" fill="none" stroke="#7b8594" stroke-width="2"/>`:`<rect x="${x-4}" y="${top}" width="8" height="${gy-top}" fill="#8a7a66"/><rect x="${x-12}" y="${top+6}" width="24" height="4" fill="#6f6252"/>`;
+    s+=tower(x1)+tower(x2);
+    const w=E.cab.w,q=AG.q[i]||w,f=clamp(26*Math.cbrt(q/w)*Math.pow(p.span/E.inst.spanD,0.35),10,130);
+    const yA=top+(E.inst.opgw?0:6),d=`M${x1} ${yA} Q${(x1+x2)/2} ${yA+2*f} ${x2} ${yA}`;
+    if(E.inst.opgw){s+=`<path d="M${x1-40} ${top+66} Q${(x1+x2)/2} ${top+66+2*f*0.9} ${x2-40} ${top+66}" fill="none" stroke="#9aa3ad" stroke-width="1.4"/><path d="M${x1+40} ${top+66} Q${(x1+x2)/2} ${top+66+2*f*0.9} ${x2+40} ${top+66}" fill="none" stroke="#9aa3ad" stroke-width="1.4"/>`;}
+    const ice=AG.ice[i];
+    if(ice>0.3)s+=`<path d="${d}" fill="none" stroke="#bfe3f7" stroke-width="${(3+ice*0.45).toFixed(1)}" stroke-linecap="round"/>`;
+    s+=`<path d="${d}" fill="none" stroke="var(--cable)" stroke-width="2.6"/>`;
+    const nA=clamp(Math.round(AG.gust[i]/4),0,7);
+    for(let k=0;k<nA;k++){const y=120+k*22,l=24+AG.gust[i]*1.6,x=150+((k*53)%180);s+=`<path d="M${x} ${y} h${l} m-6 -4 l6 4 l-6 4" fill="none" stroke="var(--accent)" stroke-width="1.6" opacity=".8"/>`;}
+    const hasL=E.light.some(h=>Math.floor(h/E.bh)===i);
+    if(hasL)s+=`<path d="M380 20 l-14 34 h12 l-10 30 l26 -40 h-12 l12 -24z" fill="var(--warn)"/>`;
+    const tn=AG.tens[i]*100,tc=tn>150?'var(--crit)':tn>100?'var(--warn)':'var(--good)';
+    s+=svgT(16,24,'Воздух '+nf(Ta,1)+' °C · кабель '+nf(Tc,1)+' °C',{s:14,w:600});
+    s+=svgT(16,43,'Ветер '+nf(AG.wind[i],1)+' м/с, порывы '+nf(AG.gust[i],0)+' м/с'+(ice>0.3?' · гололёд '+nf(ice,1)+' мм':''),{s:12,f:'var(--ink-2)',w:400});
+    s+=svgT((x1+x2)/2,yA+f+26,'пролёт '+p.span+' м · стрела провеса растёт с нагрузкой',{a:'middle',s:11,f:'var(--ink-2)',w:400});
+    s+=`<rect x="${W-190}" y="${gy+12}" width="170" height="8" rx="4" fill="var(--line-2)"/><rect x="${W-190}" y="${gy+12}" width="${clamp(tn/200,0,1)*170}" height="8" rx="4" fill="${tc}"/><line x1="${W-190+85}" x2="${W-190+85}" y1="${gy+8}" y2="${gy+24}" stroke="var(--ink-2)"/>`;
+    s+=svgT(W-196,gy+21,'Натяжение '+nf(tn,0)+' %',{a:'end',s:11.5,w:600,f:tc});
+  }else{
+    $('#scene-title').textContent='Кабельный коллектор';
+    s+=`<rect x="0" y="0" width="${W}" height="70" fill="var(--sky)"/><rect x="0" y="70" width="${W}" height="${H-70}" fill="var(--surface-2)"/><rect x="170" y="110" width="300" height="190" rx="10" fill="#c9ced6" opacity=".55" stroke="#7b8594" stroke-width="6"/>`;
+    for(let k=0;k<3;k++){const y=150+k*48;s+=`<line x1="200" x2="300" y1="${y}" y2="${y}" stroke="#7b8594" stroke-width="3"/><circle cx="${220+k*18}" cy="${y-6}" r="${k===1?7:5}" fill="${k===1?'var(--cable)':'#6b7480'}"/>`;}
+    s+=svgT(320,180,'Кабель на консоли',{s:12,w:600})+svgT(320,197,nf(Tc,1)+' °C · стабильная среда',{s:11.5,f:'var(--ink-2)',w:400});
+    s+=svgT(16,24,'Воздух '+nf(Ta,1)+' °C',{s:15,w:600});
+  }
+  $('#scene').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Схема трассы в выбранный момент">${s}</svg>`;
+}
+function renderReadout(i){
+  const AG=S.AG,E=S.E,p=S.p;
+  const dd=new Date(AG.t[i]),ds=dd.getUTCDate()+' '+MONTHS[dd.getUTCMonth()]+(AG.bh<24?', '+String(dd.getUTCHours()).padStart(2,'0')+':00':' '+dd.getUTCFullYear());
+  const rows=[['Дата',ds],['T кабеля',nf(AG.tc[i],1)+' °C'],['Потери плеча',nf(AG.A[i],2)+' дБ'],['QBER',nf(AG.Q[i]*100,2)+' %']];
+  if(E.inst.ground)rows.push(['Промерзание',AG.zf[i]>0.05?(AG.zf[i]>=E.zmax?'> '+nf(E.zmax,1):nf(AG.zf[i],2))+' м':'нет'],['Снег',nf(AG.snow[i],0)+' см']);
+  else if(E.inst.aer)rows.push(['Гололёд',nf(AG.ice[i],1)+' мм'],['Порывы',nf(AG.gust[i],0)+' м/с']);
+  else rows.push(['T воздуха',nf(AG.ta[i],1)+' °C'],['Среда','коллектор']);
+  let dA=0;for(let k=0;k<5;k++)dA+=AG.c[k][i];
+  rows.push(['Добавочные',nf(dA,3)+' дБ'],['Ключ',nf(AG.R[i],0)+' бит/с']);
+  $('#readout').innerHTML=rows.map(r=>`<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('');
+}
+
+/* ---------- кабель в разрезе ---------- */
+const FIBER_COLORS=['#1f6fd1','#f08a24','#1fa04a','#8b5a2b','#8e959d','#f4f4f4','#d8302f','#222222','#f2cf1d','#8a4fc9','#f19ac2','#35c7d8'];
+function ring(cx,cy,r,n,wr,fill,stroke){let s='';for(let k=0;k<n;k++){const a=TAU2*k/n;s+=`<circle cx="${(cx+r*Math.cos(a)).toFixed(1)}" cy="${(cy+r*Math.sin(a)).toFixed(1)}" r="${wr}" fill="${fill}" stroke="${stroke}" stroke-width=".8"/>`;}return s;}
+function fibersIn(cx,cy,r,k,fr=1.9){let s='';const n=Math.min(12,k);if(n<=0)return '';const rr=n<=1?0:r*0.55;for(let j=0;j<n;j++){const a=TAU2*j/n-Math.PI/2;s+=`<circle cx="${(cx+rr*Math.cos(a)).toFixed(1)}" cy="${(cy+rr*Math.sin(a)).toFixed(1)}" r="${fr}" fill="${FIBER_COLORS[j%12]}" stroke="#333" stroke-width=".4"/>`;}return s;}
+function drawCross(){
+  const p=S.p,cab=CABLES[p.cable],fb=FIBERS[p.fiber],nf_=p.nfib;
+  const cx=132,cy=140,R=112;let s='',labels=[];
+  s+=`<defs><radialGradient id="steel" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#e6ebf0"/><stop offset="1" stop-color="#6d7783"/></radialGradient><radialGradient id="alu" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#f4f6f8"/><stop offset="1" stop-color="#a3adb8"/></radialGradient></defs>`;
+  const sheath=(r,col='#1c2128')=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}" stroke="var(--line)" stroke-width="1"/>`;
+  const modules=(rc,rt)=>{
+    const nMod=Math.ceil(nf_/12),pos=Math.max(6,nMod),per=Math.ceil(nf_/nMod);let m='';
+    const cols=['#2e7bd6','#ef8a2c','#23a455','#8d5a2f','#9aa1a8','#e9edf1','#d53a38','#2b2b2b'];
+    for(let k=0;k<pos;k++){const a=TAU2*k/pos-Math.PI/2,x=cx+rc*Math.cos(a),y=cy+rc*Math.sin(a);
+      if(k<nMod)m+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rt}" fill="#f6ecc2" stroke="${cols[k%8]}" stroke-width="3"/>`+fibersIn(x,y,rt-3,Math.min(12,nf_-k*per),rt>18?2.1:1.7);
+      else m+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rt}" fill="#9aa1a8" stroke="#6e757c" stroke-width="1.2"/>`;}
+    return {m,nMod,pos,per};
+  };
+  const csm=r=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#d8cfa9" stroke="#8e8567" stroke-width="1"/>`;
+  const at=(r,deg)=>[cx+r*Math.cos(deg*Math.PI/180),cy+r*Math.sin(deg*Math.PI/180)];
+  if(cab.kind==='armor'||cab.kind==='tape'||cab.kind==='adss'){
+    s+=sheath(R);
+    labels.push({p:at(R-3,-70),t:'Наружная оболочка ПЭ',d:cab.kind==='adss'?'трекингостойкая, УФ-стабилизированная':'защита от влаги и УФ'});
+    let inner=R-8;
+    if(cab.kind==='armor'){
+      const rr=R-17,wr=7,n=Math.floor(Math.PI/Math.asin(wr/rr));s+=ring(cx,cy,rr,n,wr-0.4,'url(#steel)','#4a525c');
+      labels.push({p:at(rr,-38),t:'Броня: стальные проволоки',d:'раздавливание, грызуны, растяжение'});
+      s+=sheath(R-25,'#262c34');inner=R-30;labels.push({p:at(R-27,-8),t:'Внутренняя оболочка',d:'разделяет броню и сердечник'});
+    }else if(cab.kind==='tape'){
+      let d='';const rr=R-12,k=72;for(let j=0;j<=k;j++){const a=TAU2*j/k,r2=rr+(j%2?2.5:-2.5);d+=(j?'L':'M')+(cx+r2*Math.cos(a)).toFixed(1)+' '+(cy+r2*Math.sin(a)).toFixed(1);}
+      s+=`<path d="${d}Z" fill="#8d97a3" stroke="#5f6873" stroke-width="1"/>`+sheath(R-16,'#262c34');inner=R-20;
+      labels.push({p:at(rr,-38),t:'Гофрированная стальная лента',d:'поперечная прочность, защита в трубе'});
+    }else{
+      s+=`<circle cx="${cx}" cy="${cy}" r="${R-10}" fill="#d9b24c"/>`;let dd='';for(let j=0;j<220;j++){const a=j*2.39996,r2=R-22+((j*37)%12);dd+=`<circle cx="${(cx+r2*Math.cos(a)).toFixed(1)}" cy="${(cy+r2*Math.sin(a)).toFixed(1)}" r="1.1" fill="#a9802a"/>`;}s+=dd;
+      s+=sheath(R-24,'#262c34');inner=R-28;
+      labels.push({p:at(R-16,-38),t:'Арамидные нити',d:'несут натяжение пролёта, диэлектрик'});
+    }
+    s+=`<circle cx="${cx}" cy="${cy}" r="${inner}" fill="#f3e7b5" stroke="#b9ac78" stroke-dasharray="3 2"/>`;
+    labels.push({p:at(inner-2,20),t:'Водоблокирующая лента, гидрофоб',d:'останавливает продольное проникновение воды'});
+    const mod=modules(inner*0.56,Math.min(24,inner*0.36));s+=mod.m+csm(inner*0.2);
+    labels.push({p:at(inner*0.56+Math.min(24,inner*0.36)-4,62),t:`Оптические модули: ${mod.nMod} × до 12 ОВ`,d:'свободная укладка в гидрофобном геле'});
+    labels.push({p:[cx,cy],t:'Центральный силовой элемент',d:'стеклопластиковый пруток'});
+  }else if(cab.kind==='opgw'){
+    const wr=15,r1=R-wr,n1=Math.floor(Math.PI/Math.asin(wr/r1));s+=ring(cx,cy,r1,n1,wr-0.6,'url(#alu)','#7f8994');
+    labels.push({p:at(r1,-60),t:'Повив из алюминиевого сплава',d:'проводимость токов КЗ и молнии'});
+    const wr2=13,r2=r1-wr-wr2+1,n2=Math.floor(Math.PI/Math.asin(wr2/r2));s+=ring(cx,cy,r2,n2,wr2-0.6,'url(#steel)','#4a525c');
+    labels.push({p:at(r2,-20),t:'Сталеалюминиевые проволоки',d:'механическая прочность грозотроса'});
+    const rt=r2-wr2-2;s+=`<circle cx="${cx}" cy="${cy}" r="${rt}" fill="#aeb7c1" stroke="#5f6873" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="${rt-4}" fill="#f6ecc2"/>`;
+    let fs='';const nshow=Math.min(nf_,24);for(let j=0;j<nshow;j++){const ring2=j<8?0.35:0.7,a=TAU2*(j<8?j/8:(j-8)/Math.max(1,nshow-8));fs+=`<circle cx="${(cx+(rt-4)*ring2*Math.cos(a)).toFixed(1)}" cy="${(cy+(rt-4)*ring2*Math.sin(a)).toFixed(1)}" r="2.3" fill="${FIBER_COLORS[j%12]}" stroke="#333" stroke-width=".4"/>`;}s+=fs;
+    labels.push({p:at(rt-2,30),t:'Трубка из нержавеющей стали',d:`${nf_} ОВ в гидрофобном заполнителе`});
+  }else{
+    s+=sheath(R,'#2b3139');labels.push({p:at(R-3,-60),t:'Оболочка LSZH',d:'для помещений и вводов'});
+    s+=`<circle cx="${cx}" cy="${cy}" r="${R-9}" fill="#d9b24c"/>`;labels.push({p:at(R-16,-25),t:'Арамидные нити',d:'разгрузка при монтаже'});
+    const nshow=Math.min(nf_,24),rows=nshow>12?[R*0.42,R*0.7]:[R*0.5];let k=0;
+    for(const rr of rows){const cnt=rows.length>1?(rr===rows[0]?Math.min(8,nshow):nshow-8):nshow;for(let j=0;j<cnt;j++,k++){const a=TAU2*j/cnt-Math.PI/2;const x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10" fill="${FIBER_COLORS[k%12]}" stroke="#222" stroke-width=".6"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#fff" stroke="#999" stroke-width=".4"/>`;}}
+    s+=csm(R*0.18);labels.push({p:at(rows[0],25),t:'Волокна в плотном буфере 900 мкм',d:'прямая передача деформаций оболочки'});
+  }
+  // подписи
+  const lx=286;labels=labels.slice(0,6);
+  labels.forEach((L,k)=>{const y=26+k*38;s+=`<polyline points="${L.p[0].toFixed(1)},${L.p[1].toFixed(1)} ${lx-14},${y-4} ${lx-4},${y-4}" fill="none" stroke="var(--ink-2)" stroke-width=".8" opacity=".7"/><circle cx="${L.p[0].toFixed(1)}" cy="${L.p[1].toFixed(1)}" r="2.4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1"/>`;
+    s+=`<text x="${lx}" y="${y}" font-size="11.5" font-weight="600" fill="var(--ink)" style="font-family:var(--f-body)">${L.t}</text><text x="${lx}" y="${y+14}" font-size="10.5" fill="var(--muted)" style="font-family:var(--f-body)">${L.d}</text>`;});
+  // врезка волокна
+  const fx=312,fy=282,cr=28,core=fb.mfd*1.25;
+  s+=`<circle cx="${fx}" cy="${fy}" r="${cr}" fill="#dfeaf5" stroke="#8fa3b8"/>`;
+  if(fb.trench)s+=`<circle cx="${fx}" cy="${fy}" r="${core+7}" fill="none" stroke="#6f86a0" stroke-width="3.5" opacity=".75"/>`;
+  s+=`<circle cx="${fx}" cy="${fy}" r="${core}" fill="var(--accent)" opacity=".85"/>`;
+  s+=`<text x="${fx+cr+10}" y="${fy-8}" font-size="12" font-weight="600" fill="var(--ink)" style="font-family:var(--f-body)">${fb.n} · ПМП ${nf(fb.mfd,1)} мкм</text><text x="${fx+cr+10}" y="${fy+7}" font-size="10.5" fill="var(--muted)" style="font-family:var(--f-body)">оболочка 125 мкм${fb.trench?' · депрессированное кольцо':''}</text><text x="${fx+cr+10}" y="${fy+21}" font-size="10.5" fill="var(--muted)" style="font-family:var(--f-body)">потери на виток R ${nf(p.bendR,1)} мм: ${nf(lossPerTurn(fb,p.bendR),lossPerTurn(fb,p.bendR)<0.01?4:3)} дБ</text>`;
+  $('#cross').innerHTML=`<svg viewBox="0 0 540 320" role="img" aria-label="Поперечное сечение кабеля ${esc(cab.n)}">${s}</svg>`;
+  $('#cross-sub').textContent=`${cab.s}, Ø ≈ ${nf(cab.D,1)} мм, ${cab.tmin}…+${cab.tmax} °C, изгиб ≥ ${cab.bendD} D`;
+}
+
+/* ---------- события и паспорт ---------- */
+function renderEvents(){
+  const {ev}=S.ev,E=S.E;
+  const crit=ev.filter(e=>e.sev==='crit').length,warn=ev.filter(e=>e.sev==='warn').length;
+  $('#ev-sub').textContent=ev.length?`${crit} крит. · ${warn} предупр. · ${ev.length-crit-warn} инф.`:'';
+  const list=ev.slice().sort((a,b)=>({crit:0,warn:1,info:2}[a.sev]-{crit:0,warn:1,info:2}[b.sev])||a.i-b.i).slice(0,40);
+  if(!list.length){$('#events').innerHTML='<li style="cursor:default"><span class="sev info"></span><div class="et">Критических точек не найдено</div><div class="ed">При заданных условиях QBER и потери остаются в допустимых пределах на всём периоде.</div></li>';return;}
+  $('#events').innerHTML=list.map(e=>{const t0=E.W.t0+e.i*3600e3;return `<li data-i="${e.i}" tabindex="0"><span class="sev ${e.sev}"></span><div class="et">${esc(e.t)}</div><div class="ed"><span class="mono">${fdate(t0,E.bh<24)}${e.dur>1?' · '+fmtDur(e.dur):''}</span><br>${esc(e.d)}</div></li>`;}).join('');
+}
+function passportData(){
+  const {p,R,E,Lmax}=S,cab=E.cab,fb=FIBERS[p.fiber],thr=p.thr;
+  const tcMin=minOf(E.Tc),tcMax=maxOf(E.Tc);
+  let dTmax=0;for(let i=1;i<E.N;i++)dTmax=Math.max(dTmax,Math.abs(E.Tc[i]-E.Tc[i-1]));
+  const yrs=E.N/8766,lam=(INSTALL[p.install].cut)*DIGS[p.digs]*p.L*yrs,pCut=1-Math.exp(-lam);
+  const perma=E.soil.ice>0&&E.inst.ground;
+  const mttr=MTTR[p.access]*(perma||p.install==='adss'&&p.access==='remote'?1.5:1);
+  const rows=[],recs=[];
+  const st=(ok,warn)=>ok?'ok':warn?'warn':'bad';
+  rows.push(['Сегмент',`${p.L} км · ${INSTALL[p.install].n}`,`${cab.n}; ${fb.n}, ${nf(p.alpha,3)} дБ/км`]);
+  rows.push(['Условия',REGIONS[p.region].n+(p.mode==='csv'&&CSVDATA?' · собственный ряд':''),fdate(E.W.t0)+' — '+fdate(E.W.t0+(E.N-1)*3600e3)]);
+  const tOk=tcMin>=cab.tmin&&tcMax<=cab.tmax;
+  rows.push(['Температура кабеля',`${nf(tcMin,1)} … ${nf(tcMax,1)} °C`,`паспорт ${cab.s}: ${cab.tmin}…+${cab.tmax} °C · макс. скорость ${nf(dTmax,2)} °C/ч`,st(tOk)]);
+  if(!tOk)recs.push(`Кабель выходит за паспортный диапазон: нужен кабель с диапазоном не уже ${nf(Math.floor(tcMin/5)*5,0)}…+${nf(Math.ceil(tcMax/5)*5,0)} °C или защищённая прокладка.`);
+  if(E.inst.ground){
+    let zfMax=0;for(let i=0;i<E.N;i++)if(E.zf[i]<7.9)zfMax=Math.max(zfMax,E.zf[i]);
+    const fc=E.fcyc[E.N-1],reach=minOf(E.lf)<0.5;
+    if(perma){
+      let ztMax=0;for(let i=0;i<E.N;i++)if(isFinite(E.zt[i]))ztMax=Math.max(ztMax,E.zt[i]);
+      const set=E.settle[E.N-1];
+      rows.push(['Мерзлота',`протаивание до ${nf(ztMax,2)} м`,`исходно ${nf(E.maxThaw0,2)} м · осадка ≈ ${nf(set*100,1)} см · циклов у кабеля ${fc}`,st(set<0.01,set<0.03)]);
+      if(fc>0)recs.push(`Кабель на ${nf(p.depth,2)} м лежит в сезонно-талом слое (протаивание до ${nf(ztMax,2)} м): ${fc} циклов промерзания за период. Разместить ниже подошвы протаивания либо в насыпи или на опорах; учесть, что снятие мохового покрова при строительстве увеличивает протаивание — эта модель его не учитывает.`);
+      if(set>=0.01)recs.push(`Протаивание ММП глубже исходного (${nf(ztMax,2)} м против ${nf(E.maxThaw0,2)} м) даёт осадку около ${nf(set*100,1)} см: нужна термостабилизация основания, опоры или обход льдистого участка.`);
+    }else{
+      rows.push(['Промерзание',zfMax>0.05?`до ${nf(zfMax,2)} м`:'не достигает 0,1 м',`кабель на ${nf(p.depth,2)} м · циклов промерзания у кабеля ${fc}`,st(!reach||E.soil.heave<0.15,E.soil.heave<0.5)]);
+      if(reach&&E.soil.heave>=0.15){const zr=Math.min(3,Math.ceil((zfMax+0.3)*10)/10);recs.push(`Грунт пучинистый и промерзает до уровня кабеля: заглубить до ≥ ${nf(zr,1)} м или заменить засыпку непучинистой, обеспечить дренаж.`);}
+    }
+    if(E.soil.settle>0)recs.push('Торф даёт осадку и без промерзания: предпочтителен коридор по устойчивому основанию или прокладка в трубе с запасом длины.');
+    if(E.inst.duct&&p.water>0&&maxOf(E.dice)>0.5)recs.push('В трубе замерзает вода: нужен дренаж канализации, герметизация колодцев или заглубление ниже фронта промерзания.');
+  }
+  if(E.inst.aer){
+    const tm=maxOf(E.tens);
+    rows.push(['Нагрузка подвеса',`до ${nf(tm*100,0)} % расчётной`,`пролёт ${p.span} м · гололёдный район ${['','I','II','III','IV','V'][p.iceReg]} · гололёд до ${nf(maxOf(E.W.ice),0)} мм`,st(tm<=1,tm<=1.5)]);
+    if(tm>1){const smax=Math.floor(p.span*Math.pow(1/tm,1.5)/5)*5;recs.push(`Натяжение превышает расчётное: сократить пролёт до ≤ ${smax} м или выбрать кабель с большей допустимой нагрузкой.`);}
+    if(E.light.length)recs.push(`Ожидается ${E.light.length} грозовых воздействий на линию: терминал должен быстро восстанавливать поляризацию и сессию.`);
+  }
+  const bb=R.bb;
+  rows.push(['Бюджет потерь',`${nf(R.base,2)} + ${nf(R.maxD,2)} дБ`,`база: волокно ${nf(bb.fiber,2)}, сварки ${bb.nMuft}×${nf(p.splice,2)}, соединители ${nf(bb.conn,2)}, изгибы ${nf(bb.bend,bb.bend<0.1?3:2)} дБ; + макс. добавочные`]);
+  rows.push(['Остаток бюджета',`${nf(R.minMargin,2)} дБ`,`предел ${nf(p.amax,1)} дБ минус запас ${nf(p.reserve,1)} дБ`,st(R.minMargin>=0,R.minMargin>=-p.reserve)]);
+  if(bb.bend>0.3)recs.push(`Потери на изгибах в муфтах ${nf(bb.bend,2)} дБ: увеличить радиус укладки до ≥ ${fb.minR} мм или применить G.657.A2.`);
+  rows.push(['QBER',`макс. ${nf(R.maxQ*100,2)} %`,`порог ${nf(thr,1)} % · вне нормы ${fmtDur(Math.round((1-R.avail)*E.N))}`,st(R.maxQ<=thr/100*0.8,R.maxQ<=thr/100)]);
+  rows.push(['Доступность по оптике',nf(R.avail*100,3)+' %','доля времени с QBER и потерями в норме',st(R.avail>=1,R.avail>=0.999)]);
+  rows.push(['Макс. длина плеча',Lmax>=300?'> 300 км':nf(Lmax,0)+' км','при тех же условиях, с учётом запаса и порога QBER',st(Lmax>=p.L*1.1,Lmax>=p.L)]);
+  if(Lmax<p.L)recs.push(`Плечо длиннее допустимого: сократить до ≤ ${nf(Math.floor(Lmax),0)} км, добавить промежуточный доверенный узел или выбрать волокно с меньшим затуханием.`);
+  if(S.tauReq!=null)recs.push(S.tauReq>0.01?`Ошибки вызваны динамикой поляризации: требуется подстройка с временем реакции ≤ ${nf(S.tauReq,S.tauReq<1?2:1)} мс (сейчас ${nf(p.tau,1)} мс).`:'Динамика поляризации слишком быстрая для любой подстройки: нужна другая трасса или прокладка.');
+  rows.push(['Внешние повреждения',`${nf(pCut*100,1)} % за период`,`ожидаемый простой ≈ ${nf(lam*mttr,1)} ч (MTTR ${nf(mttr,0)} ч) · не входит в доступность по оптике`,st(pCut<0.1,pCut<0.3)]);
+  if(p.dwdm&&R.Bram>2e-6)recs.push('Шум классического DWDM-канала сравним с темновыми отсчётами: снизить мощность, разнести длины волн или усилить фильтрацию.');
+  if(!recs.length)recs.push('При заданных условиях специальные меры не требуются. Для паспорта нужно подтвердить параметры измерениями участка.');
+  return {rows,recs};
+}
+function renderPassport(){
+  const {rows,recs}=passportData(),v=verdict();
+  $('#pass-pill').innerHTML=`<span class="pill ${v.c}">${v.t}</span>`;
+  $('#passport').innerHTML=rows.map(r=>`<tr><th>${r[0]}</th><td><span class="mono ${r[3]?'tone-'+r[3]:''}">${esc(r[1])}</span><small>${esc(r[2])}</small></td></tr>`).join('');
+  $('#recs').innerHTML=recs.map(t=>`<li>${esc(t)}</li>`).join('');
+}
+function passportText(){
+  const {rows,recs}=passportData(),v=verdict();
+  return ['ПАСПОРТ СЕГМЕНТА МУКС (демонстрационный расчёт)','Итог: '+v.t,'',...rows.map(r=>r[0]+': '+r[1]+' — '+r[2]),'','Рекомендации:',...recs.map(t=>'• '+t),'','Модель иллюстративная, коэффициенты не калиброваны по линиям МУКС.'].join('\n');
+}
+
+/* ---------- сравнения ---------- */
+function renderFiberCmp(){
+  const {E,p}=S;const thr=p.thr/100;
+  let h='<thead><tr><th>Волокно</th><th>α, дБ/км</th><th>Макс. доб. потери, дБ</th><th>Мин. остаток, дБ</th><th>Макс. QBER, %</th><th>Доступность, %</th><th>Макс. плечо, км</th></tr></thead><tbody>';
+  for(const [k,fb] of Object.entries(FIBERS)){
+    const r=runOptics(E,p,{fiber:k,quick:true}),lm=findLmax(E,p,{fiber:k});
+    const qc=r.maxQ>thr?'tone-bad':r.maxQ>thr*0.8?'tone-warn':'';
+    h+=`<tr class="${k===p.fiber?'cur':''}"><td><b>${fb.n}</b><span class="note">${esc(fb.note)}</span></td><td>${nf(fb.a,2)}</td><td>${nf(r.maxD,2)}</td><td class="${r.minMargin<0?'tone-warn':''}">${nf(r.minMargin,2)}</td><td class="${qc}">${nf(r.maxQ*100,2)}</td><td>${nf(r.avail*100,2)}</td><td>${lm>=300?'> 300':nf(lm,0)}</td></tr>`;
+  }
+  $('#cmp-fiber').innerHTML=h+'</tbody>';
+}
+function renderInstCmp(){
+  const p0=S.p;const thr=p0.thr/100;
+  let h='<table class="cmp"><thead><tr><th>Способ прокладки</th><th>Кабель</th><th>T кабеля, °C</th><th>Макс. доб. потери, дБ</th><th>Макс. QBER, %</th><th>Доступность, %</th><th>P повреждения</th><th>Макс. плечо, км</th></tr></thead><tbody>';
+  for(const [k,ins] of Object.entries(INSTALL)){
+    const p=Object.assign({},p0,{install:k,cable:ins.cable});if(ins.depth&&!INSTALL[p0.install].ground)p.depth=ins.depth;if(ins.span&&!INSTALL[p0.install].aer)p.span=ins.span;
+    const E=simulateEnv(p),r=runOptics(E,p,{quick:true}),lm=findLmax(E,p);
+    const yrs=E.N/8766,pc=1-Math.exp(-ins.cut*DIGS[p.digs]*p.L*yrs);
+    const qc=r.maxQ>thr?'tone-bad':r.maxQ>thr*0.8?'tone-warn':'';
+    h+=`<tr class="${k===p0.install?'cur':''}"><td><b>${ins.n}</b>${ins.ground?`<span class="note">${nf(p.depth,2)} м, ${SOILS[p.soil].n.toLowerCase()}</span>`:ins.aer?`<span class="note">пролёт ${p.span} м</span>`:''}</td><td>${CABLES[ins.cable].s}</td><td>${nf(minOf(E.Tc),1)} … ${nf(maxOf(E.Tc),1)}</td><td>${nf(r.maxD,2)}</td><td class="${qc}">${nf(r.maxQ*100,2)}</td><td>${nf(r.avail*100,2)}</td><td>${nf(pc*100,1)} %</td><td>${lm>=300?'> 300':nf(lm,0)}</td></tr>`;
+  }
+  $('#cmp-inst-wrap').innerHTML=h+'</tbody></table><p class="empty-note">Стоимость строительства и обслуживания не рассчитывается: для экономического выбора сюда добавляются реальные сметы и условия проекта.</p>';
+}
+
+/* ---------- воспроизведение и прочее ---------- */
+function togglePlay(){
+  S.playing=!S.playing;$('#play').setAttribute('aria-label',S.playing?'Пауза':'Воспроизвести');
+  $('#play-ico').innerHTML=S.playing?'<path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor"/>':'<path d="M3 1.5v11l9-5.5z" fill="currentColor"/>';
+  if(S.playing){if(S.cursor>=S.AG.nb-1)S.cursor=0;let last=performance.now(),acc=S.cursor;
+    const tick=now=>{if(!S.playing)return;const secs=+$('#speed').value;acc+=(now-last)/1000*(S.AG.nb/secs);last=now;
+      if(acc>=S.AG.nb-1){acc=S.AG.nb-1;S.cursor=acc|0;$('#cursor').value=S.cursor;setCursor(S.cursor);togglePlay();return;}
+      S.cursor=acc|0;$('#cursor').value=S.cursor;if(!S.hover)setCursor(S.cursor);requestAnimationFrame(tick);};
+    requestAnimationFrame(tick);}
+}
+function drawWaves(){let s='';for(let k=0;k<14;k++){let d='';for(let x=0;x<=560;x+=8){const y=20+k*11+Math.sin(x/60+k*0.45)*14*Math.sin(x/220+0.6);d+=(x?'L':'M')+x+' '+y.toFixed(1);}s+=`<path d="${d}" fill="none" stroke="var(--wave)" stroke-width="1"/>`;}$('#waves').innerHTML=s;}
+
+function init(){
+  buildControls();wireControls();drawWaves();
+  $('#cursor').addEventListener('input',e=>{S.cursor=+e.target.value;setCursor(S.cursor);});
+  $('#play').addEventListener('click',togglePlay);
+  $('#events').addEventListener('click',e=>{const li=e.target.closest('li[data-i]');if(!li)return;const b=Math.floor(+li.dataset.i/S.E.bh);S.cursor=b;$('#cursor').value=b;setCursor(b);$('.timeline').scrollIntoView({block:'nearest',behavior:'smooth'});});
+  $('#events').addEventListener('keydown',e=>{if(e.key==='Enter'){const li=e.target.closest('li[data-i]');if(li)li.click();}});
+  $('#btn-inst').addEventListener('click',()=>{$('#cmp-inst-wrap').innerHTML='<p class="empty-note">Считаю…</p>';setTimeout(renderInstCmp,20);});
+  $('#btn-present').addEventListener('click',e=>{const on=document.body.classList.toggle('present');e.currentTarget.setAttribute('aria-pressed',on);requestAnimationFrame(()=>{drawCharts();setCursor(S.cursor);});});
+  $('#btn-side').addEventListener('click',()=>{document.body.classList.remove('present');$('#btn-present').setAttribute('aria-pressed','false');requestAnimationFrame(()=>{drawCharts();setCursor(S.cursor);});});
+  $('#btn-copy').addEventListener('click',async e=>{
+    const txt=passportText(),btn=e.currentTarget,box=$('#copybox');
+    try{await navigator.clipboard.writeText(txt);btn.textContent='Паспорт скопирован';box.hidden=true;setTimeout(()=>btn.textContent='Скопировать паспорт',1800);}
+    catch(err){box.hidden=false;box.value=txt;box.focus();box.select();btn.textContent='Выделено — нажмите Ctrl+C';setTimeout(()=>btn.textContent='Скопировать паспорт',2500);}
+  });
+  document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)){e.preventDefault();togglePlay();}});
+  let rt=null;const ro=new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(S.AG){drawCharts();setCursor(S.cursor);}},120);});ro.observe($('#charts'));
+  const reTheme=()=>{if(S.AG){drawCharts();drawCross();setCursor(S.cursor);}};
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',reTheme);
+  new MutationObserver(reTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  applyPreset(0);
+}
+if(typeof document!=='undefined')init();
+</script>
+<!--ARTIFACT-END-->
+</body>
+</html>
